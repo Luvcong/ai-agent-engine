@@ -1,0 +1,211 @@
+{
+    "thread_id": "3f2a143c-04f4-4f52-9ca9-6b59da81bfd6",
+    "title": "예상 성과 분석 리스트 생성",
+    "messages": [
+        {
+            "message_id": "df9dd94c-adcd-44b3-956f-d31d5874accb",
+            "role": "user",
+            "content": "부서별 예상 성과를 계산해서 리스트로 보여주는 데이터 분석 코드 예시를 만들어줄 수 있을까?",
+            "is_favorited": true,
+            "created_at": "2025-11-11T15:20:00+00:00"
+        },
+        {
+            "message_id": "2ee3cd80-2564-4f62-a1ca-694d98c81c88",
+            "role": "assistant",
+            "content": "부서별로 다음 분기의 예상 성과를 계산하는 기본 데이터 분석 코드 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "부서": [
+                                "영업",
+                                "개발",
+                                "마케팅",
+                                "재무",
+                                "인사"
+                            ],
+                            "예상성과점수": [
+                                92.5,
+                                88.4,
+                                85.7,
+                                83.1,
+                                79.9
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "부서별 예상 성과 점수"
+                        },
+                        "chart": {
+                            "type": "column"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "영업",
+                                "개발",
+                                "마케팅",
+                                "재무",
+                                "인사"
+                            ]
+                        },
+                        "series": [
+                            {
+                                "name": "예상성과점수",
+                                "data": [
+                                    92.5,
+                                    88.4,
+                                    85.7,
+                                    83.1,
+                                    79.9
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "code_snippet": "SELECT department, ROUND(AVG(performance_score) * 1.05, 2) AS expected_performance FROM employee_performance WHERE quarter = '2024-Q4' GROUP BY department ORDER BY expected_performance DESC;"
+            },
+            "created_at": "2025-11-11T15:21:00+00:00"
+        },
+        {
+            "message_id": "bde9e648-ae9d-4bde-898e-cafee0491a06",
+            "role": "user",
+            "content": "이번엔 개인별로 전분기 대비 예상 성과 향상률을 계산하는 데이터 분석 코드이 궁금해.",
+            "is_favorited": true,
+            "created_at": "2025-11-11T15:23:00+00:00"
+        },
+        {
+            "message_id": "5e6d9ef8-b59e-4917-8de4-78810761fb0f",
+            "role": "assistant",
+            "content": "개인별 전분기 대비 예상 성과 향상률을 계산하는 데이터 분석 코드 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "이름": [
+                                "김민수",
+                                "박지현",
+                                "이정훈",
+                                "최유리"
+                            ],
+                            "전분기점수": [
+                                85.0,
+                                78.5,
+                                82.0,
+                                80.2
+                            ],
+                            "이번분기예상점수": [
+                                89.3,
+                                81.6,
+                                85.4,
+                                83.1
+                            ],
+                            "향상률(%)": [
+                                5.06,
+                                3.95,
+                                4.15,
+                                3.61
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "title": {
+                        "text": "개인별 예상 성과 향상률"
+                    },
+                    "chart": {
+                        "type": "line"
+                    },
+                    "xAxis": {
+                        "categories": [
+                            "김민수",
+                            "박지현",
+                            "이정훈",
+                            "최유리"
+                        ]
+                    },
+                    "series": [
+                        {
+                            "name": "향상률(%)",
+                            "data": [
+                                5.06,
+                                3.95,
+                                4.15,
+                                3.61
+                            ]
+                        }
+                    ]
+                },
+                "code_snippet": "WITH perf AS (SELECT employee_name, quarter, AVG(performance_score) AS avg_score FROM employee_performance GROUP BY employee_name, quarter) SELECT employee_name, quarter, avg_score, ROUND((avg_score - LAG(avg_score) OVER(PARTITION BY employee_name ORDER BY quarter)) / LAG(avg_score) OVER(PARTITION BY employee_name ORDER BY quarter) * 100, 2) AS expected_growth FROM perf;"
+            },
+            "created_at": "2025-11-11T15:24:00+00:00"
+        },
+        {
+            "message_id": "c1b87265-f32f-4a02-bb13-fd91b47f4d6e",
+            "role": "user",
+            "content": "좋아, 그럼 전체 예상 성과에서 상위 5개 부서의 비중을 시각화하면 어떨까?",
+            "is_favorited": false,
+            "created_at": "2025-11-11T15:26:00+00:00"
+        },
+        {
+            "message_id": "b6e9a1e3-203f-4fa8-87ce-1d1a04df52a1",
+            "role": "assistant",
+            "content": "상위 5개 부서의 예상 성과 비중을 보여주는 데이터 분석 코드과 시각화 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "부서": [
+                                "영업",
+                                "개발",
+                                "마케팅",
+                                "재무",
+                                "인사"
+                            ],
+                            "성과비중(%)": [
+                                25.4,
+                                23.1,
+                                18.6,
+                                17.2,
+                                15.7
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "title": {
+                        "text": "상위 5개 부서 예상 성과 비중"
+                    },
+                    "chart": {
+                        "type": "pie"
+                    },
+                    "xAxis": {
+                        "categories": [
+                            "영업",
+                            "개발",
+                            "마케팅",
+                            "재무",
+                            "인사"
+                        ]
+                    },
+                    "series": [
+                        {
+                            "name": "성과비중(%)",
+                            "data": [
+                                25.4,
+                                23.1,
+                                18.6,
+                                17.2,
+                                15.7
+                            ]
+                        }
+                    ]
+                },
+                "code_snippet": "SELECT department, ROUND(SUM(predicted_score) / (SELECT SUM(predicted_score) FROM department_forecast) * 100, 2) AS share_percent FROM department_forecast GROUP BY department ORDER BY share_percent DESC LIMIT 5;"
+            },
+            "created_at": "2025-11-11T15:27:00+00:00"
+        }
+    ]
+}

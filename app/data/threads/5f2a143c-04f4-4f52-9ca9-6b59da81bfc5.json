@@ -1,0 +1,249 @@
+{
+    "thread_id": "5f2a143c-04f4-4f52-9ca9-6b59da81bfc5",
+    "title": "항목별 분포와 비율 비교분석하는 차트 생성",
+    "messages": [
+        {
+            "message_id": "69ccb34a-7a4c-4d06-aeee-f2d6927187e2",
+            "role": "user",
+            "content": "데이터 항목별 분포를 한눈에 볼 수 있는 데이터 분석 코드과 차트를 보여줄 수 있을까?",
+            "is_favorited": false,
+            "created_at": "2025-11-11T09:20:00+00:00"
+        },
+        {
+            "message_id": "c7b7f8a1-1b8a-4cea-b575-6ddd328719a0",
+            "role": "assistant",
+            "content": "항목별 데이터 분포를 시각화하는 데이터 분석 코드 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "항목": [
+                                "A",
+                                "B",
+                                "C",
+                                "D",
+                                "E"
+                            ],
+                            "건수": [
+                                150,
+                                120,
+                                100,
+                                80,
+                                50
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "항목별 데이터 분포"
+                        },
+                        "series": [
+                            {
+                                "name": "건수",
+                                "data": [
+                                    150,
+                                    120,
+                                    100,
+                                    80,
+                                    50
+                                ]
+                            }
+                        ],
+                        "chart": {
+                            "type": "column"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "A",
+                                "B",
+                                "C",
+                                "D",
+                                "E"
+                            ]
+                        }
+                    }
+                },
+                "code_snippet": "SELECT category, COUNT(*) AS item_count FROM data_table GROUP BY category ORDER BY item_count DESC;"
+            },
+            "created_at": "2025-11-11T09:21:00+00:00"
+        },
+        {
+            "message_id": "dde708df-294c-43dc-a7fb-80896d31d7ed",
+            "role": "user",
+            "content": "각 항목이 전체에서 차지하는 비율도 함께 보고 싶어. 그건 어떻게 계산해?",
+            "is_favorited": false,
+            "created_at": "2025-11-11T09:23:00+00:00"
+        },
+        {
+            "message_id": "0983b272-89b8-4de4-82e0-9895be0ea027",
+            "role": "assistant",
+            "content": "항목별 비율을 계산하고 시각화하는 데이터 분석 코드 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "항목": [
+                                "A",
+                                "B",
+                                "C",
+                                "D",
+                                "E"
+                            ],
+                            "비율(%)": [
+                                30.0,
+                                24.0,
+                                20.0,
+                                16.0,
+                                10.0
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "항목별 비율 비교"
+                        },
+                        "series": [
+                            {
+                                "name": "비율(%)",
+                                "data": [
+                                    30.0,
+                                    24.0,
+                                    20.0,
+                                    16.0,
+                                    10.0
+                                ]
+                            }
+                        ],
+                        "chart": {
+                            "type": "pie"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "A",
+                                "B",
+                                "C",
+                                "D",
+                                "E"
+                            ]
+                        }
+                    }
+                },
+                "code_snippet": "SELECT category, ROUND(COUNT(*) / (SELECT COUNT(*) FROM data_table) * 100, 2) AS percentage FROM data_table GROUP BY category ORDER BY percentage DESC;"
+            },
+            "created_at": "2025-11-11T09:24:00+00:00"
+        },
+        {
+            "message_id": "909961af-07e2-446b-b82c-092995104781",
+            "role": "user",
+            "content": "좋아. 그럼 최근 6개월 동안 항목별 비율이 어떻게 변했는지도 보고 싶어.",
+            "is_favorited": false,
+            "created_at": "2025-11-11T09:26:00+00:00"
+        },
+        {
+            "message_id": "8727ea8a-93e9-4484-8253-67657ce18481",
+            "role": "assistant",
+            "content": "최근 6개월간 항목별 비율 변화를 보여주는 데이터 분석 코드과 시각화 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "월": [
+                                "2024-05",
+                                "2024-06",
+                                "2024-07",
+                                "2024-08",
+                                "2024-09",
+                                "2024-10"
+                            ],
+                            "A": [
+                                32.0,
+                                31.5,
+                                30.8,
+                                30.0,
+                                29.2,
+                                28.5
+                            ],
+                            "B": [
+                                25.0,
+                                24.5,
+                                23.8,
+                                23.0,
+                                22.5,
+                                21.8
+                            ],
+                            "C": [
+                                18.0,
+                                19.0,
+                                19.5,
+                                20.0,
+                                20.5,
+                                21.0
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "최근 6개월 항목별 비율 변화"
+                        },
+                        "series": [
+                            {
+                                "name": "A",
+                                "data": [
+                                    32.0,
+                                    31.5,
+                                    30.8,
+                                    30.0,
+                                    29.2,
+                                    28.5
+                                ]
+                            },
+                            {
+                                "name": "B",
+                                "data": [
+                                    25.0,
+                                    24.5,
+                                    23.8,
+                                    23.0,
+                                    22.5,
+                                    21.8
+                                ]
+                            },
+                            {
+                                "name": "C",
+                                "data": [
+                                    18.0,
+                                    19.0,
+                                    19.5,
+                                    20.0,
+                                    20.5,
+                                    21.0
+                                ]
+                            }
+                        ],
+                        "chart": {
+                            "type": "line"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "2024-05",
+                                "2024-06",
+                                "2024-07",
+                                "2024-08",
+                                "2024-09",
+                                "2024-10"
+                            ]
+                        }
+                    }
+                },
+                "code_snippet": "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, category, ROUND(COUNT(*) / SUM(COUNT(*)) OVER(PARTITION BY DATE_FORMAT(created_at, '%Y-%m')) * 100, 2) AS monthly_share FROM data_table GROUP BY month, category ORDER BY month;"
+            },
+            "created_at": "2025-11-11T09:27:00+00:00"
+        }
+    ]
+}

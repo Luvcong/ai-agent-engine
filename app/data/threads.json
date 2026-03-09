@@ -1,0 +1,60 @@
+{
+	"response": [
+		{
+			"thread_id": "2f2a143c-04f4-4f52-9ca9-6b59da81bfd6",
+			"title": "주간업무와 성과를 비교 분석하는 보고서 작성",
+			"type": "데이터분석",
+			"created_at": "2025-11-11T14:20:00Z",
+			"updated_at": "2025-11-11T14:20:00Z",
+			"is_favorited": true
+		},
+		{
+			"thread_id": "3f2a143c-04f4-4f52-9ca9-6b59da81bfd6",
+			"title": "예상 성과 분석 리스트 생성",
+			"type": "질의응답",
+			"created_at": "2025-11-11T15:20:00Z",
+			"updated_at": "2025-11-11T15:20:00Z",
+			"is_favorited": true
+		},
+		{
+			"thread_id": "2f2a143c-04f4-4f52-9ca9-6b59da81bfc5",
+			"title": "분기별 매출 분석 요청",
+			"type": "데이터분석+차트",
+			"created_at": "2025-11-11T14:20:00Z",
+			"updated_at": "2025-11-11T14:20:00Z",
+			"is_favorited": false
+		},
+		{
+			"thread_id": "3f2a143c-04f4-4f52-9ca9-6b59da81bfc5",
+			"title": "매출 상위 10개 제품 분석",
+			"type": "질의응답",
+			"created_at": "2025-11-11T15:20:00Z",
+			"updated_at": "2025-11-11T15:20:00Z",
+			"is_favorited": false
+		},
+		{
+			"thread_id": "4f2a143c-04f4-4f52-9ca9-6b59da81bfc5",
+			"title": "상품 비율과 매출 차트 보여줘",
+			"type": "데이터분석+차트",
+			"created_at": "2025-11-11T10:20:00Z",
+			"updated_at": "2025-11-11T10:20:00Z",
+			"is_favorited": false
+		},
+		{
+			"thread_id": "5f2a143c-04f4-4f52-9ca9-6b59da81bfc5",
+			"title": "항목별 분포와 비율 비교분석하는 차트 생성",
+			"type": "데이터분석+차트",
+			"created_at": "2025-11-11T09:20:00Z",
+			"updated_at": "2025-11-11T09:20:00Z",
+			"is_favorited": false
+		},
+		{
+			"thread_id": "6f2a143c-04f4-4f52-9ca9-6b59da81bfc5",
+			"title": "3분기 고객 현황 분석 요청",
+			"type": "질의응답",
+			"created_at": "2025-11-10T08:20:00Z",
+			"updated_at": "2025-11-10T08:20:00Z",
+			"is_favorited": false
+		}
+	]
+}

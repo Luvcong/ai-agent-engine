@@ -1,0 +1,249 @@
+{
+    "thread_id": "3f2a143c-04f4-4f52-9ca9-6b59da81bfc5",
+    "title": "매출 상위 10개 제품을 보여주는 쿼리 생성",
+    "messages": [
+        {
+            "message_id": "cced5742-c722-4e95-aa0d-a6c617dbb2f7",
+            "role": "user",
+            "content": "매출 상위 10개 제품을 조회할 수 있는 기본 데이터 분석 코드 예시를 보여줄 수 있을까?",
+            "is_favorited": false,
+            "created_at": "2025-11-11T15:20:00+00:00"
+        },
+        {
+            "message_id": "6bba7fce-2ef5-459a-9492-8f77261384aa",
+            "role": "assistant",
+            "content": "가장 기본적인 매출 상위 10개 제품을 조회하는 데이터 분석 코드 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "제품명": [
+                                "노트북",
+                                "스마트폰",
+                                "모니터",
+                                "키보드",
+                                "마우스",
+                                "프린터",
+                                "헤드셋",
+                                "태블릿",
+                                "카메라",
+                                "스피커"
+                            ],
+                            "매출액": [
+                                5500000,
+                                4900000,
+                                4200000,
+                                3800000,
+                                3600000,
+                                3400000,
+                                3200000,
+                                3100000,
+                                2900000,
+                                2700000
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "매출 상위 10개 제품"
+                        },
+                        "series": [
+                            {
+                                "name": "매출액",
+                                "data": [
+                                    5500000,
+                                    4900000,
+                                    4200000,
+                                    3800000,
+                                    3600000,
+                                    3400000,
+                                    3200000,
+                                    3100000,
+                                    2900000,
+                                    2700000
+                                ]
+                            }
+                        ],
+                        "chart": {
+                            "type": "column"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "노트북",
+                                "스마트폰",
+                                "모니터",
+                                "키보드",
+                                "마우스",
+                                "프린터",
+                                "헤드셋",
+                                "태블릿",
+                                "카메라",
+                                "스피커"
+                            ]
+                        }
+                    }
+                },
+                "code_snippet": "SELECT product_name, SUM(amount) AS total_sales FROM sales GROUP BY product_name ORDER BY total_sales DESC LIMIT 10;"
+            },
+            "created_at": "2025-11-11T15:21:00+00:00"
+        },
+        {
+            "message_id": "8831d8aa-498c-4d2d-ac9c-08a3c80fdbfc",
+            "role": "user",
+            "content": "이번엔 분기별로 매출 상위 10개 제품이 어떻게 달라지는지도 보고 싶어. 그걸 위한 데이터 분석 코드도 만들어줄래?",
+            "is_favorited": false,
+            "created_at": "2025-11-11T15:23:00+00:00"
+        },
+        {
+            "message_id": "d0235d04-eee2-4f42-a116-70e4423f4313",
+            "role": "assistant",
+            "content": "분기별로 상위 10개 제품의 매출 추이를 비교하는 데이터 분석 코드과 시각화 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "분기": [
+                                "2024-Q1",
+                                "2024-Q1",
+                                "2024-Q2",
+                                "2024-Q2",
+                                "2024-Q3",
+                                "2024-Q3"
+                            ],
+                            "제품명": [
+                                "노트북",
+                                "스마트폰",
+                                "노트북",
+                                "모니터",
+                                "스마트폰",
+                                "태블릿"
+                            ],
+                            "매출액": [
+                                2000000,
+                                1800000,
+                                2200000,
+                                2100000,
+                                2300000,
+                                2000000
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "분기별 상위 제품 매출 추이"
+                        },
+                        "series": [
+                            {
+                                "name": "노트북",
+                                "data": [
+                                    2000000,
+                                    2200000,
+                                    2300000
+                                ]
+                            },
+                            {
+                                "name": "스마트폰",
+                                "data": [
+                                    1800000,
+                                    2000000,
+                                    1950000
+                                ]
+                            },
+                            {
+                                "name": "모니터",
+                                "data": [
+                                    1600000,
+                                    2100000,
+                                    1900000
+                                ]
+                            }
+                        ],
+                        "chart": {
+                            "type": "line"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "2024-Q1",
+                                "2024-Q2",
+                                "2024-Q3"
+                            ]
+                        }
+                    }
+                },
+                "code_snippet": "SELECT QUARTER(sales_date) AS quarter, product_name, SUM(amount) AS total_sales FROM sales GROUP BY quarter, product_name HAVING RANK() OVER (PARTITION BY quarter ORDER BY SUM(amount) DESC) <= 10;"
+            },
+            "created_at": "2025-11-11T15:24:00+00:00"
+        },
+        {
+            "message_id": "87d9aa9a-9dc4-43d1-861c-06cdd6b70c23",
+            "role": "user",
+            "content": "그럼 매출 비중으로 상위 제품 TOP5만 시각화하면 어떻게 될까?",
+            "is_favorited": false,
+            "created_at": "2025-11-11T15:26:00+00:00"
+        },
+        {
+            "message_id": "28e8dcba-cbde-49b1-8e47-b6cdad330d0a",
+            "role": "assistant",
+            "content": "매출 비중 기준 상위 5개 제품의 비율을 보여주는 데이터 분석 코드과 차트 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "제품명": [
+                                "노트북",
+                                "스마트폰",
+                                "모니터",
+                                "키보드",
+                                "마우스"
+                            ],
+                            "매출비중(%)": [
+                                24.5,
+                                20.1,
+                                16.7,
+                                14.2,
+                                12.3
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "상위 5개 제품 매출 비중"
+                        },
+                        "series": [
+                            {
+                                "name": "매출비중(%)",
+                                "data": [
+                                    24.5,
+                                    20.1,
+                                    16.7,
+                                    14.2,
+                                    12.3
+                                ]
+                            }
+                        ],
+                        "chart": {
+                            "type": "pie"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "노트북",
+                                "스마트폰",
+                                "모니터",
+                                "키보드",
+                                "마우스"
+                            ]
+                        }
+                    }
+                },
+                "code_snippet": "SELECT product_name, ROUND(SUM(amount) / (SELECT SUM(amount) FROM sales) * 100, 2) AS sales_share FROM sales GROUP BY product_name ORDER BY sales_share DESC LIMIT 5;"
+            },
+            "created_at": "2025-11-11T15:27:00+00:00"
+        }
+    ]
+}

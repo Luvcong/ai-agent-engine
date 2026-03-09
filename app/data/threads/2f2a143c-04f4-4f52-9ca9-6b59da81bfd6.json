@@ -1,0 +1,228 @@
+{
+    "thread_id": "2f2a143c-04f4-4f52-9ca9-6b59da81bfd6",
+    "title": "주간업무와 성과를 비교 분석하는 SQL 생성",
+    "messages": [
+        {
+            "message_id": "70a2c5ff-e938-46b8-8537-6deda0bcadc1",
+            "role": "user",
+            "content": "직원별 주간 업무시간과 성과 점수를 비교할 수 있는 데이터 분석 코드을 만들어줄 수 있을까?",
+            "is_favorited": true,
+            "created_at": "2025-11-11T14:20:00+00:00"
+        },
+        {
+            "message_id": "1f5f161f-3571-407f-a2e5-46a4567e711b",
+            "role": "assistant",
+            "content": "직원별 주차별 업무시간과 성과를 비교하기 위한 데이터 분석 코드 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "이름": [
+                                "Alice",
+                                "Bob",
+                                "Charlie",
+                                "David"
+                            ],
+                            "총업무시간": [
+                                42,
+                                46,
+                                39,
+                                50
+                            ],
+                            "성과점수": [
+                                85,
+                                90,
+                                83,
+                                95
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "직원별 주차별 업무시간 대비 성과 비교"
+                        },
+                        "series": [
+                            {
+                                "name": "업무시간",
+                                "data": [
+                                    42,
+                                    46,
+                                    39
+                                ]
+                            },
+                            {
+                                "name": "성과점수",
+                                "data": [
+                                    85,
+                                    90,
+                                    83
+                                ]
+                            }
+                        ],
+                        "chart": {
+                            "type": "column"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "Week 1",
+                                "Week 2",
+                                "Week 3"
+                            ]
+                        }
+                    }
+                },
+                "code_snippet": "SELECT employee_name, WEEK(report_date) AS week_no, SUM(work_hours) AS total_hours, SUM(performance_score) AS total_score FROM weekly_report GROUP BY employee_name, week_no ORDER BY week_no;"
+            },
+            "created_at": "2025-11-11T14:21:00+00:00"
+        },
+        {
+            "message_id": "4706f4c9-f34f-4dca-a4c4-c8a1bc7f3acc",
+            "role": "user",
+            "content": "이번엔 팀 단위로 주간 평균 업무시간과 성과를 비교할 수 있는 데이터 분석 코드이 궁금해.",
+            "is_favorited": false,
+            "created_at": "2025-11-11T14:23:00+00:00"
+        },
+        {
+            "message_id": "cc9fb555-3c4d-4854-8137-50cb75cf7099",
+            "role": "assistant",
+            "content": "팀 단위 주간 평균 업무시간과 성과를 분석하는 데이터 분석 코드 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "팀명": [
+                                "A팀",
+                                "B팀",
+                                "C팀"
+                            ],
+                            "평균업무시간": [
+                                41,
+                                44,
+                                39
+                            ],
+                            "평균성과점수": [
+                                88,
+                                91,
+                                84
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "팀별 주간 평균 성과 추이"
+                        },
+                        "series": [
+                            {
+                                "name": "평균업무시간",
+                                "data": [
+                                    41,
+                                    42,
+                                    44
+                                ]
+                            },
+                            {
+                                "name": "평균성과점수",
+                                "data": [
+                                    88,
+                                    89,
+                                    91
+                                ]
+                            }
+                        ],
+                        "chart": {
+                            "type": "line"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "Week 1",
+                                "Week 2",
+                                "Week 3"
+                            ]
+                        }
+                    }
+                },
+                "code_snippet": "SELECT team_name, WEEK(report_date) AS week_no, AVG(work_hours) AS avg_hours, AVG(performance_score) AS avg_score FROM weekly_report GROUP BY team_name, week_no ORDER BY week_no;"
+            },
+            "created_at": "2025-11-11T14:24:00+00:00"
+        },
+        {
+            "message_id": "0e7d10cc-8759-4966-be82-c4e4ef124001",
+            "role": "user",
+            "content": "프로젝트별로 주간 업무 투입 대비 성과 효율을 계산하는 데이터 분석도 만들어줄래?",
+            "is_favorited": false,
+            "created_at": "2025-11-11T14:26:00+00:00"
+        },
+        {
+            "message_id": "617b42f8-4ecb-4918-9e5e-47f7d1f9fead",
+            "role": "assistant",
+            "content": "프로젝트별로 주간 업무 투입 대비 성과 효율을 분석하는 데이터 분석 코드 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "프로젝트": [
+                                "Alpha",
+                                "Bravo",
+                                "Charlie",
+                                "Delta"
+                            ],
+                            "총업무시간": [
+                                130,
+                                120,
+                                110,
+                                140
+                            ],
+                            "총성과점수": [
+                                980,
+                                920,
+                                870,
+                                1010
+                            ],
+                            "효율지수(%)": [
+                                7.54,
+                                7.66,
+                                7.91,
+                                7.21
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "프로젝트별 주간 업무 효율 비중"
+                        },
+                        "series": [
+                            {
+                                "name": "효율지수(%)",
+                                "data": [
+                                    7.54,
+                                    7.66,
+                                    7.91,
+                                    7.21
+                                ]
+                            }
+                        ],
+                        "chart": {
+                            "type": "pie"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "Alpha",
+                                "Bravo",
+                                "Charlie",
+                                "Delta"
+                            ]
+                        }
+                    }
+                },
+                "code_snippet": "SELECT project_name, WEEK(report_date) AS week_no, SUM(work_hours) AS total_hours, SUM(performance_score) AS total_score, ROUND((SUM(performance_score)/SUM(work_hours))*100,2) AS efficiency_rate FROM project_weekly_report GROUP BY project_name, week_no ORDER BY week_no;"
+            },
+            "created_at": "2025-11-11T14:27:00+00:00"
+        }
+    ]
+}

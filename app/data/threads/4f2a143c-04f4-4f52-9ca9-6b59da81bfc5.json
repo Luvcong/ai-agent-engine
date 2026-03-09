@@ -1,0 +1,262 @@
+{
+    "thread_id": "4f2a143c-04f4-4f52-9ca9-6b59da81bfc5",
+    "title": "상품 비율과 매출 차트 보여줘",
+    "messages": [
+        {
+            "message_id": "a46f2df2-f13f-4a40-858e-0d56e4ab4e73",
+            "role": "user",
+            "content": "카테고리별 상품 비율과 매출 현황을 데이터 분석 코드로 확인하고 싶어. 예시를 보여줄래?",
+            "is_favorited": false,
+            "created_at": "2025-11-11T10:20:00+00:00"
+        },
+        {
+            "message_id": "87445e8e-4c59-48f0-8f7d-c31bd64c5b0d",
+            "role": "assistant",
+            "content": "카테고리별 상품 비율과 매출 현황을 조회하는 기본 데이터 분석 코드 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "카테고리": [
+                                "전자제품",
+                                "가전",
+                                "식품",
+                                "의류",
+                                "생활용품"
+                            ],
+                            "상품수": [
+                                120,
+                                95,
+                                80,
+                                65,
+                                50
+                            ],
+                            "매출액": [
+                                5400000,
+                                4600000,
+                                3900000,
+                                3100000,
+                                2800000
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "chart_data": {
+                        "title": {
+                            "text": "카테고리별 상품수와 매출 비교"
+                        },
+                        "chart": {
+                            "type": "column"
+                        },
+                        "xAxis": {
+                            "categories": [
+                                "전자제품",
+                                "가전",
+                                "식품",
+                                "의류",
+                                "생활용품"
+                            ]
+                        },
+                        "series": [
+                            {
+                                "name": "상품수",
+                                "data": [
+                                    120,
+                                    95,
+                                    80,
+                                    65,
+                                    50
+                                ]
+                            },
+                            {
+                                "name": "매출액",
+                                "data": [
+                                    5400000,
+                                    4600000,
+                                    3900000,
+                                    3100000,
+                                    2800000
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "code_snippet": "SELECT category, COUNT(product_id) AS product_count, SUM(amount) AS total_sales FROM products JOIN sales USING(product_id) GROUP BY category ORDER BY total_sales DESC;"
+            },
+            "created_at": "2025-11-11T10:21:00+00:00"
+        },
+        {
+            "message_id": "7d0cf373-d5a0-44e0-b748-781428d371d5",
+            "role": "user",
+            "content": "좋아. 이번엔 전체 매출에서 각 카테고리가 차지하는 비율만 보고 싶어.",
+            "is_favorited": false,
+            "created_at": "2025-11-11T10:23:00+00:00"
+        },
+        {
+            "message_id": "c1c7e2e6-7684-4225-8d6d-30291e92044e",
+            "role": "assistant",
+            "content": "전체 매출 대비 카테고리별 비율을 계산하는 데이터 분석 코드과 시각화 예시입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "카테고리": [
+                                "전자제품",
+                                "가전",
+                                "식품",
+                                "의류",
+                                "생활용품"
+                            ],
+                            "매출비율(%)": [
+                                27.8,
+                                23.6,
+                                19.8,
+                                15.9,
+                                12.9
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "title": {
+                        "text": "카테고리별 매출 비율"
+                    },
+                    "chart": {
+                        "type": "pie"
+                    },
+                    "xAxis": {
+                        "categories": [
+                            "전자제품",
+                            "가전",
+                            "식품",
+                            "의류",
+                            "생활용품"
+                        ]
+                    },
+                    "series": [
+                        {
+                            "name": "매출비율(%)",
+                            "data": [
+                                27.8,
+                                23.6,
+                                19.8,
+                                15.9,
+                                12.9
+                            ]
+                        }
+                    ]
+                },
+                "code_snippet": "SELECT category, ROUND(SUM(amount) / (SELECT SUM(amount) FROM sales) * 100, 2) AS sales_share FROM sales JOIN products USING(product_id) GROUP BY category ORDER BY sales_share DESC;"
+            },
+            "created_at": "2025-11-11T10:24:00+00:00"
+        },
+        {
+            "message_id": "3b2a7287-f0b4-4b1c-9d12-2d3b4e38e3dc",
+            "role": "user",
+            "content": "그럼 최근 6개월 동안 카테고리별 매출 추이를 보여주는 데이터 분석도 가능할까?",
+            "is_favorited": false,
+            "created_at": "2025-11-11T10:26:00+00:00"
+        },
+        {
+            "message_id": "ab14d0d1-679b-4cf3-9507-f29edb1e9e12",
+            "role": "assistant",
+            "content": "최근 6개월간 카테고리별 매출 추이를 확인하는 데이터 분석 코드 예시와 차트입니다.",
+            "metadata": {
+                "data": {
+                    "dataTable": {
+                        "columns": {
+                            "월": [
+                                "2024-05",
+                                "2024-06",
+                                "2024-07",
+                                "2024-08",
+                                "2024-09",
+                                "2024-10"
+                            ],
+                            "전자제품": [
+                                800000,
+                                820000,
+                                850000,
+                                870000,
+                                900000,
+                                940000
+                            ],
+                            "가전": [
+                                700000,
+                                710000,
+                                720000,
+                                750000,
+                                770000,
+                                800000
+                            ],
+                            "식품": [
+                                500000,
+                                520000,
+                                540000,
+                                560000,
+                                590000,
+                                610000
+                            ]
+                        }
+                    }
+                },
+                "chart": {
+                    "title": {
+                        "text": "최근 6개월 카테고리별 매출 추이"
+                    },
+                    "chart": {
+                        "type": "line"
+                    },
+                    "xAxis": {
+                        "categories": [
+                            "2024-05",
+                            "2024-06",
+                            "2024-07",
+                            "2024-08",
+                            "2024-09",
+                            "2024-10"
+                        ]
+                    },
+                    "series": [
+                        {
+                            "name": "전자제품",
+                            "data": [
+                                800000,
+                                820000,
+                                850000,
+                                870000,
+                                900000,
+                                940000
+                            ]
+                        },
+                        {
+                            "name": "가전",
+                            "data": [
+                                700000,
+                                710000,
+                                720000,
+                                750000,
+                                770000,
+                                800000
+                            ]
+                        },
+                        {
+                            "name": "식품",
+                            "data": [
+                                500000,
+                                520000,
+                                540000,
+                                560000,
+                                590000,
+                                610000
+                            ]
+                        }
+                    ]
+                },
+                "code_snippet": "SELECT DATE_FORMAT(sales_date, '%Y-%m') AS month, category, SUM(amount) AS monthly_sales FROM sales JOIN products USING(product_id) WHERE sales_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) GROUP BY month, category ORDER BY month;"
+            },
+            "created_at": "2025-11-11T10:27:00+00:00"
+        }
+    ]
+}
