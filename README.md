@@ -22,7 +22,7 @@ LangChain Agent (OpenAI GPT-4.1)
 │ Tool 4: search_hospital_info      (HIRA 병원정보)   │
 └─────────────────────────────────────────────────────┘
     ↓
-SSE 스트리밍 응답 (step:model -> step:tools -> step:done)
+LLM 응답 (step:model -> step:tools -> step:done)
 ```
 
 ## 채팅으로 조회 가능한 기능
@@ -88,11 +88,7 @@ OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4.1
 PUBLIC_DATA_API_KEY=...
 PUBLIC_DATA_TIMEOUT=20
-DRUG_SEARCH_LIMIT=5
-DISEASE_SEARCH_LIMIT=5
-HOSPITAL_SEARCH_LIMIT=5
 SQLITE_CHECKPOINTER_PATH=app/data/checkpoints.db
-DEEPAGENT_RECURSION_LIMIT=20
 ```
 
 ## 핵심 구현 포인트
