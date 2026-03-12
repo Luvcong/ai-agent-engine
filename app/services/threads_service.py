@@ -1,5 +1,5 @@
 import uuid
-from app.schemas.threads import RootBaseModel, ThreadDataResponse
+from app.models.threads import RootBaseModel, ThreadDataResponse
 from app.utils.read_json import read_json
 
 

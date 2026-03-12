@@ -7,15 +7,14 @@ from langchain.agents.structured_output import ToolStrategy
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
 
+from app.agents.prompts import SYSTEM_PROMPT
 from app.core.config import settings
-from app.prompt import MEDICAL_SYSTEM_PROMPT
-from app.schemas.agent_response import AgentResponse
+from app.models.agent_response import AgentResponse
 from app.tools.medical_tools import (
     resolve_region_information,
     search_disease_info,
     search_drug_info,
     search_hospital_info,
-    search_pharmacy_info,
 )
 
 try:
@@ -74,9 +73,8 @@ def create_medical_agent():
             search_disease_info,     # 질병정보조회
             search_drug_info,        # 의약품정보조회
             search_hospital_info,    # 병원정보조회
-            search_pharmacy_info,    # 약국정보조회
         ],
-        system_prompt=MEDICAL_SYSTEM_PROMPT,
+        system_prompt=SYSTEM_PROMPT,
         response_format=ToolStrategy(AgentResponse),
         checkpointer=get_checkpointer(),
     )

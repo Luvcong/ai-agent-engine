@@ -1,14 +1,13 @@
-from datetime import datetime
-from typing import Generic, List, Literal, Optional, TypeVar, Union
+from typing import List, Literal, Optional, Union
 from uuid import UUID
-
 from pydantic import BaseModel
+from datetime import datetime
 
-from app.schemas.chat import ResponseMetadata
+from app.models.chat import ResponseMetadata
+from typing import TypeVar, Generic
 
 
 T = TypeVar("T")
-
 
 class RootBaseModel(BaseModel, Generic[T]):
     response: T
@@ -30,10 +29,8 @@ class AIMessageData(BaseModel):
     created_at: datetime
 
 
+
 class ThreadDataResponse(BaseModel):
     thread_id: UUID
     title: str
     messages: List[Union[UserMessageData, AIMessageData]]
-
-
-__all__ = ["AIMessageData", "RootBaseModel", "ThreadDataResponse", "UserMessageData"]

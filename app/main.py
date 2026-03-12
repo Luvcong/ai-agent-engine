@@ -4,10 +4,6 @@ from fastapi import FastAPI, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.agents.medical import close_checkpointer, init_checkpointer
 from app.core.config import settings
-from app.infrastructure.public_data import (
-    close_public_data_http_client,
-    init_public_data_http_client,
-)
 from app.api.routes.threads import threads_router
 from app.api.routes.chat import chat_router
 from app.utils.logger import custom_logger
@@ -16,11 +12,9 @@ from app.utils.logger import custom_logger
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await init_checkpointer()
-    await init_public_data_http_client()
     try:
         yield
     finally:
-        await close_public_data_http_client()
         await close_checkpointer()
 
 

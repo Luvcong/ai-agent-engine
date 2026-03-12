@@ -2,7 +2,7 @@ import uuid
 from app.services.threads_service import get_thread_by_id_json, get_threads_json, get_favorite_questions_json
 from fastapi import APIRouter
 
-from app.schemas.threads import RootBaseModel, ThreadDataResponse
+from app.models.threads import RootBaseModel, ThreadDataResponse
 
 threads_router = APIRouter()
 

@@ -1,7 +1,6 @@
 from typing import Any
-from uuid import UUID
-
 from pydantic import BaseModel
+from uuid import UUID
 
 
 class ChatRequest(BaseModel):
@@ -19,5 +18,3 @@ class ChatResponse(BaseModel):
     message_id: str
     content: str
     metadata: ResponseMetadata
-
-__all__ = ["ChatRequest", "ChatResponse", "ResponseMetadata"]

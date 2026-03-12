@@ -1,13 +1,8 @@
 import uuid
 
-from app.orchestration.streaming import (
-    build_done_event,
-    build_model_event,
-    serialize_sse_event,
-)
 from app.utils.logger import custom_logger
 from fastapi import APIRouter, HTTPException
-from app.schemas.chat import ChatRequest
+from app.models.chat import ChatRequest
 from app.services.agent_service import AgentService
 from fastapi.responses import StreamingResponse
 
@@ -33,7 +28,7 @@ async def post_chat(request: ChatRequest):
         
         async def event_generator():
             try:
-                yield serialize_sse_event(build_model_event(["Planning"]))
+                yield f'data: {{"step": "model", "tool_calls": ["Planning"]}}\n\n'
                 
                 # agentService 생성
                 agent_service = AgentService()
@@ -42,16 +37,21 @@ async def post_chat(request: ChatRequest):
                     user_messages=request.message,
                     thread_id=thread_id
                 ):
-                    yield serialize_sse_event(chunk)
+                    yield f"data: {chunk}\n\n"
             except Exception as e:
                 # 스트리밍 중 예외 발생 시 에러 메시지를 스트리밍으로 전송
-                error_response = build_done_event(
-                    message_id=str(uuid.uuid4()),
-                    content="요청 처리 중 오류가 발생했습니다. 다시 시도해주세요.",
-                    metadata={},
-                    error=str(e),
-                )
-                yield serialize_sse_event(error_response)
+                import json
+                from datetime import datetime
+                error_response = {
+                    "step": "done",
+                    "message_id": str(uuid.uuid4()),
+                    "role": "assistant",
+                    "content": "요청 처리 중 오류가 발생했습니다. 다시 시도해주세요.",
+                    "metadata": {},
+                    "created_at": datetime.utcnow().isoformat(),
+                    "error": str(e)
+                }
+                yield f"data: {json.dumps(error_response, ensure_ascii=False)}\n\n"
                 custom_logger.error(f"Error in event_generator: {e}")
                 import traceback
                 custom_logger.error(traceback.format_exc())
