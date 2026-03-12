@@ -18,19 +18,21 @@ async def post_chat(request: ChatRequest):
     ```json
     {
         "thread_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-        "message": "안녕하세요, 오늘 날씨가 어때요?"
+        "message": "타이레놀이 어떤 약인지 알려줘"
     }
     ```
     """
     custom_logger.info(f"API Request: {request}")
     try:
-        # agent_service = AgentService()
         thread_id = getattr(request, "thread_id", uuid.uuid4())
         
         async def event_generator():
             try:
                 yield f'data: {{"step": "model", "tool_calls": ["Planning"]}}\n\n'
+                
+                # agentService 생성
                 agent_service = AgentService()
+
                 async for chunk in agent_service.process_query(
                     user_messages=request.message,
                     thread_id=thread_id
@@ -65,4 +67,3 @@ async def post_chat(request: ChatRequest):
         import traceback
         custom_logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
-

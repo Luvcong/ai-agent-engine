@@ -2,44 +2,56 @@ import asyncio
 import contextlib
 from datetime import datetime
 import json
-from typing import Optional
 import uuid
 
+from app.core.config import settings
 from app.utils.logger import log_execution, custom_logger
 
 from langchain_core.messages import HumanMessage
-from langgraph.errors import GraphRecursionError
 
 
 class AgentService:
     def __init__(self):
-        # IMP: LangChain을 통해 사용할 LLM(OpenAI) 객체 초기화 구현. 에이전트의 두뇌 역할을 합니다.
         self.agent = None
+
         self.progress_queue: asyncio.Queue = asyncio.Queue()
 
     def _create_agent(self, thread_id: uuid.UUID = None):
         """LangChain 에이전트 생성"""
-        # IMP: DeepAgents 라이브러리를 사용하여 LangGraph 기반의 에이전트를 생성하는 구현. 
-        # LLM 모델, 사용할 도구(Tools), 시스템 프롬프트, 상태 저장소(Checkpointer), 그리고 응답 포맷(ToolStrategy)을 결합하여 워크플로우를 초기화합니다.
-        # Agent 생성
-        from app.agents.dummy import Agent
-        self.agent = Agent()
+        from app.agents.medical import create_medical_agent
+        # 의료 agent 생성
+        self.agent = create_medical_agent()
+
+    def _sanitize_final_content(self, content: str | None) -> str:
+        if not content:
+            return ""
+
+        normalized = content.strip()
+        metadata_marker = "\nmetadata:"
+        lowered = normalized.lower()
+        marker_index = lowered.find(metadata_marker)
+        if marker_index != -1:
+            normalized = normalized[:marker_index].rstrip()
+
+        if normalized.lower().startswith("metadata:"):
+            return ""
+        return normalized
 
     # 실제 대화 로직
     @log_execution
     async def process_query(self, user_messages: str, thread_id: uuid.UUID):
         """LangChain Messages 형식의 쿼리를 처리하고 AIMessage 형식으로 반환합니다."""
         try:
-            # 에이전트 초기화 (한 번만)
             self._create_agent(thread_id=thread_id)
 
             custom_logger.info(f"사용자 메시지: {user_messages}")
 
-            # IMP: LangGraph 에이전트에 사용자의 메시지를 HumanMessage 형태로 전달하고, 
-            # thread_id를 통해 대화 문맥(Context)을 유지하며 비동기 스트리밍(astream)으로 실행하는 구현.
             agent_stream = self.agent.astream(
                 {"messages": [HumanMessage(content=user_messages)]},
-                config={"configurable": {"thread_id": str(thread_id)}},
+                config={
+                    "configurable": {"thread_id": str(thread_id)},
+                    "recursion_limit": settings.DEEPAGENT_RECURSION_LIMIT,
+                },
                 stream_mode="updates",
             )
 
@@ -94,6 +106,8 @@ class AgentService:
                     custom_logger.info(f"에이전트 청크: {chunk}")
                     try:
                         for step, event in chunk.items():
+                            # create_agent(..., stream_mode="updates")는 model/tools 단계별로
+                            # 이벤트를 나눠 준다. 여기서는 프론트가 이해하기 쉬운 SSE 형태로 재가공한다.
                             if not event or not (step in ["model", "tools"]):
                                 continue
                             messages = event.get("messages", [])
@@ -105,12 +119,15 @@ class AgentService:
                                 if not tool_calls:
                                     continue
                                 tool = tool_calls[0]
-                                if tool.get("name") == "ChatResponse":
+                                if tool.get("name") in {"AgentResponse", "ChatResponse"}:
                                     args = tool.get("args", {})
                                     metadata = args.get("metadata")
                                     custom_logger.info("========================================")
                                     custom_logger.info(args)
-                                    yield f'{{"step": "done", "message_id": {json.dumps(args.get("message_id"))}, "role": "assistant", "content": {json.dumps(args.get("content"), ensure_ascii=False)}, "metadata": {json.dumps(self._handle_metadata(metadata), ensure_ascii=False)}, "created_at": "{datetime.utcnow().isoformat()}"}}'
+                                    sanitized_content = self._sanitize_final_content(
+                                        args.get("content")
+                                    )
+                                    yield f'{{"step": "done", "message_id": {json.dumps(args.get("message_id"))}, "role": "assistant", "content": {json.dumps(sanitized_content, ensure_ascii=False)}, "metadata": {json.dumps(self._handle_metadata(metadata), ensure_ascii=False)}, "created_at": "{datetime.utcnow().isoformat()}"}}'
                                 else:
                                     yield f'{{"step": "model", "tool_calls": {json.dumps([tool["name"] for tool in tool_calls])}}}'
                             if step == "tools":
@@ -163,7 +180,7 @@ class AgentService:
                 "content": error_content,
                 "metadata": error_metadata,
                 "created_at": datetime.utcnow().isoformat(),
-                "error": str(e) if not isinstance(e, GraphRecursionError) else None
+                "error": str(e)
             }
             yield json.dumps(error_response, ensure_ascii=False)
 

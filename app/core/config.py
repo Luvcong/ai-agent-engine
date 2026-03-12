@@ -18,16 +18,23 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: List[str] = ["*"]
     
-    # IMP: LangChain 객체 및 LLM 연동에 사용되는 필수 설정값(API Key 등)
-    # LangChain 설정
     OPENAI_API_KEY: str
     OPENAI_MODEL: str
     
-    # 기본 설정 (추가 환경변수가 필요하면 여기에 추가하세요)
+    # 공공데이터포털 serviceKey와 HTTP timeout 설정
+    PUBLIC_DATA_API_KEY: str = ""
+    PUBLIC_DATA_TIMEOUT: int = 20
 
-    # IMP: DeepAgents 라이브러리 실행 시 Graph 에이전트의 최대 재귀 호출 횟수(Recursion Limit) 설정
-    # DeepAgents 설정
-    DEEPAGENT_RECURSION_LIMIT: int = 20
+    # API 조회 limit 수 설정
+    DRUG_SEARCH_LIMIT: int = 5
+    DISEASE_SEARCH_LIMIT: int = 5
+    HOSPITAL_SEARCH_LIMIT: int = 5
+
+    # LangGraph checkpointer의 SQLite 파일 저장 위치
+    SQLITE_CHECKPOINTER_PATH: str = "app/data/checkpoints.db"
+
+    # 한 요청에서 모델/tool 반복 횟수 상한값
+    DEEPAGENT_RECURSION_LIMIT: int = 10
 
     OPIK: OpikSettings | None = None
     
@@ -40,4 +47,3 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
-

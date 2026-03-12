@@ -1,21 +1,33 @@
+from contextlib import asynccontextmanager
 import time
 from fastapi import FastAPI, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
+from app.agents.medical import close_checkpointer, init_checkpointer
 from app.core.config import settings
 from app.api.routes.threads import threads_router
 from app.api.routes.chat import chat_router
 from app.utils.logger import custom_logger
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await init_checkpointer()
+    try:
+        yield
+    finally:
+        await close_checkpointer()
+
+
 app = FastAPI(
-    title="Edu Agent Template",
-    description="LangChain 기반 에이전트 교육용 템플릿",
+    title="Medical Info Agent",
+    description="공공데이터 기반 의료 정보 조회 에이전트",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 api_router = APIRouter(prefix=settings.API_V1_PREFIX)
 
 
-# CORS 설정
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -24,7 +36,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API 라우터 등록
 api_router.include_router(threads_router, tags=["threads"])
 api_router.include_router(chat_router, tags=["chat"])
 
@@ -50,7 +61,7 @@ async def log_requests(request: Request, call_next):
 
 @app.get("/")
 async def root():
-    return {"message": "Edu Agent API", "version": "0.1.0"}
+    return {"message": "Medical Info Agent API", "version": "0.1.0"}
 
 
 @app.get("/health")
