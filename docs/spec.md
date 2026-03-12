@@ -32,3 +32,21 @@
 - 질병 질문 -> `search_disease_info`
 - 의약품 질문 -> `search_drug_info`
 - 병원 질문 -> `search_hospital_info`
+- 약국 질문 -> `search_pharmacy_info`
+- 지역 해석 질문 -> `resolve_region_information`
+
+## Internal flow
+
+현재 내부 처리 흐름은 다음과 같습니다.
+
+```text
+chat route
+-> AgentService
+-> LangChain agent
+-> medical tools
+-> MedicalSearchService
+-> PublicMedicalDataClient
+-> domain/infrastructure helpers
+```
+
+SSE event 생성과 serialization은 `app/orchestration/streaming.py`에서 담당합니다.

@@ -1,10 +1,14 @@
 import asyncio
 import contextlib
-from datetime import datetime
-import json
 import uuid
+from typing import Any
 
 from app.core.config import settings
+from app.orchestration.streaming import (
+    build_done_event,
+    build_model_event,
+    build_tools_event,
+)
 from app.utils.logger import log_execution, custom_logger
 
 from langchain_core.messages import HumanMessage
@@ -22,6 +26,11 @@ class AgentService:
         # 의료 agent 생성
         self.agent = create_medical_agent()
 
+    def _get_or_create_agent(self, thread_id: uuid.UUID):
+        if self.agent is None:
+            self._create_agent(thread_id=thread_id)
+        return self.agent
+
     def _sanitize_final_content(self, content: str | None) -> str:
         if not content:
             return ""
@@ -37,16 +46,78 @@ class AgentService:
             return ""
         return normalized
 
+    def _build_error_event(self, content: str, error: Exception) -> dict[str, Any]:
+        return build_done_event(
+            message_id=str(uuid.uuid4()),
+            content=content,
+            metadata={},
+            error=str(error),
+        )
+
+    def _extract_message_from_event(self, event: dict[str, Any]) -> Any | None:
+        if not event:
+            return None
+        messages = event.get("messages", [])
+        if not messages:
+            return None
+        return messages[0]
+
+    def _build_final_response_event(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        metadata = tool_args.get("metadata")
+        custom_logger.info("========================================")
+        custom_logger.info(tool_args)
+        sanitized_content = self._sanitize_final_content(tool_args.get("content"))
+        return build_done_event(
+            message_id=tool_args.get("message_id"),
+            content=sanitized_content,
+            metadata=self._handle_metadata(metadata),
+        )
+
+    def _translate_model_step(self, message: Any) -> dict[str, Any] | None:
+        tool_calls = message.tool_calls
+        if not tool_calls:
+            return None
+
+        tool = tool_calls[0]
+        if tool.get("name") in {"AgentResponse", "ChatResponse"}:
+            return self._build_final_response_event(tool.get("args", {}))
+
+        return build_model_event([tool["name"] for tool in tool_calls])
+
+    def _translate_tools_step(self, message: Any) -> dict[str, Any]:
+        return build_tools_event(message.name, message.content)
+
+    def _translate_chunk_events(self, chunk: dict[str, Any]) -> list[dict[str, Any]]:
+        translated_events: list[dict[str, Any]] = []
+
+        for step, event in chunk.items():
+            if not event or step not in ["model", "tools"]:
+                continue
+
+            message = self._extract_message_from_event(event)
+            if message is None:
+                continue
+
+            if step == "model":
+                translated = self._translate_model_step(message)
+                if translated is not None:
+                    translated_events.append(translated)
+
+            if step == "tools":
+                translated_events.append(self._translate_tools_step(message))
+
+        return translated_events
+
     # 실제 대화 로직
     @log_execution
     async def process_query(self, user_messages: str, thread_id: uuid.UUID):
         """LangChain Messages 형식의 쿼리를 처리하고 AIMessage 형식으로 반환합니다."""
         try:
-            self._create_agent(thread_id=thread_id)
+            agent = self._get_or_create_agent(thread_id=thread_id)
 
             custom_logger.info(f"사용자 메시지: {user_messages}")
 
-            agent_stream = self.agent.astream(
+            agent_stream = agent.astream(
                 {"messages": [HumanMessage(content=user_messages)]},
                 config={
                     "configurable": {"thread_id": str(thread_id)},
@@ -69,7 +140,7 @@ class AgentService:
                 if progress_task in done:
                     try:
                         progress_event = progress_task.result()
-                        yield json.dumps(progress_event, ensure_ascii=False)
+                        yield progress_event
                         progress_task = asyncio.create_task(self.progress_queue.get())
                     except asyncio.CancelledError:
                         progress_task = None
@@ -90,63 +161,22 @@ class AgentService:
                         import traceback
                         custom_logger.error(traceback.format_exc())
                         agent_task = None
-                        # 에러를 스트리밍으로 전송
-                        error_response = {
-                            "step": "done",
-                            "message_id": str(uuid.uuid4()),
-                            "role": "assistant",
-                            "content": "처리 중 오류가 발생했습니다. 다시 시도해주세요.",
-                            "metadata": {},
-                            "created_at": datetime.utcnow().isoformat(),
-                            "error": str(e)
-                        }
-                        yield json.dumps(error_response, ensure_ascii=False)
+                        yield self._build_error_event(
+                            "처리 중 오류가 발생했습니다. 다시 시도해주세요.",
+                            e,
+                        )
                         break
 
                     custom_logger.info(f"에이전트 청크: {chunk}")
                     try:
-                        for step, event in chunk.items():
-                            # create_agent(..., stream_mode="updates")는 model/tools 단계별로
-                            # 이벤트를 나눠 준다. 여기서는 프론트가 이해하기 쉬운 SSE 형태로 재가공한다.
-                            if not event or not (step in ["model", "tools"]):
-                                continue
-                            messages = event.get("messages", [])
-                            if len(messages) == 0:
-                                continue
-                            message = messages[0]
-                            if step == "model":
-                                tool_calls = message.tool_calls
-                                if not tool_calls:
-                                    continue
-                                tool = tool_calls[0]
-                                if tool.get("name") in {"AgentResponse", "ChatResponse"}:
-                                    args = tool.get("args", {})
-                                    metadata = args.get("metadata")
-                                    custom_logger.info("========================================")
-                                    custom_logger.info(args)
-                                    sanitized_content = self._sanitize_final_content(
-                                        args.get("content")
-                                    )
-                                    yield f'{{"step": "done", "message_id": {json.dumps(args.get("message_id"))}, "role": "assistant", "content": {json.dumps(sanitized_content, ensure_ascii=False)}, "metadata": {json.dumps(self._handle_metadata(metadata), ensure_ascii=False)}, "created_at": "{datetime.utcnow().isoformat()}"}}'
-                                else:
-                                    yield f'{{"step": "model", "tool_calls": {json.dumps([tool["name"] for tool in tool_calls])}}}'
-                            if step == "tools":
-                                yield f'{{"step": "tools", "name": {json.dumps(message.name)}, "content": {message.content}}}'
+                        for translated_event in self._translate_chunk_events(chunk):
+                            yield translated_event
                     except Exception as e:
                         # 청크 처리 중 예외 발생
                         custom_logger.error(f"Error processing chunk: {e}")
                         import traceback
                         custom_logger.error(traceback.format_exc())
-                        error_response = {
-                            "step": "done",
-                            "message_id": str(uuid.uuid4()),
-                            "role": "assistant",
-                            "content": "데이터 처리 중 오류가 발생했습니다.",
-                            "metadata": {},
-                            "created_at": datetime.utcnow().isoformat(),
-                            "error": str(e)
-                        }
-                        yield json.dumps(error_response, ensure_ascii=False)
+                        yield self._build_error_event("데이터 처리 중 오류가 발생했습니다.", e)
                         break
 
                     agent_task = asyncio.create_task(agent_iterator.__anext__())
@@ -161,7 +191,7 @@ class AgentService:
                     remaining = self.progress_queue.get_nowait()
                 except asyncio.QueueEmpty:
                     break
-                yield json.dumps(remaining, ensure_ascii=False)
+                yield remaining
 
         except Exception as e:
             import traceback
@@ -173,16 +203,7 @@ class AgentService:
             error_metadata = {}
             
             # 에러 응답을 스트리밍으로 전송 (HTTPException 대신)
-            error_response = {
-                "step": "done",
-                "message_id": str(uuid.uuid4()),
-                "role": "assistant",
-                "content": error_content,
-                "metadata": error_metadata,
-                "created_at": datetime.utcnow().isoformat(),
-                "error": str(e)
-            }
-            yield json.dumps(error_response, ensure_ascii=False)
+            yield self._build_error_event(error_content, e)
 
     @log_execution
     def _handle_metadata(self, metadata) -> dict:

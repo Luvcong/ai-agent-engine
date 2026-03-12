@@ -6,12 +6,20 @@ from fastapi.testclient import TestClient
 import httpx
 
 from app.clients.public_data import PublicMedicalDataClient
+from app.domain.hospital_search import (
+    filter_hospital_items,
+    parse_hospital_search_text,
+    prefer_department_name_matches,
+)
+from app.domain.region_resolution import extract_emdong_name, resolve_region_codes
+from app.infrastructure.public_data.parsers import parse_public_data_response
 from app.services.agent_service import AgentService
 from app.tools.medical_tools import (
     resolve_region_information,
     search_disease_info,
     search_drug_info,
     search_hospital_info,
+    search_pharmacy_info,
 )
 
 
@@ -26,37 +34,28 @@ def parse_sse_response(response_text: str) -> list[dict]:
 
 def test_chat_stream_returns_sse_events(client: TestClient, monkeypatch):
     async def fake_process_query(self, user_messages: str, thread_id: uuid.UUID):
-        yield json.dumps(
-            {"step": "model", "tool_calls": ["search_drug_info"]},
-            ensure_ascii=False,
-        )
-        yield json.dumps(
-            {
-                "step": "tools",
-                "name": "search_drug_info",
-                "content": {
-                    "query": {"item_name": "타이레놀"},
-                    "count": 1,
-                    "items": [{"item_name": "타이레놀정160mg"}],
-                },
+        yield {"step": "model", "tool_calls": ["search_drug_info"]}
+        yield {
+            "step": "tools",
+            "name": "search_drug_info",
+            "content": {
+                "query": {"item_name": "타이레놀"},
+                "count": 1,
+                "items": [{"item_name": "타이레놀정160mg"}],
             },
-            ensure_ascii=False,
-        )
-        yield json.dumps(
-            {
-                "step": "done",
-                "message_id": str(uuid.uuid4()),
-                "role": "assistant",
-                "content": "타이레놀 정보를 찾았습니다.",
-                "metadata": {
-                    "tool_name": "search_drug_info",
-                    "query": {"item_name": "타이레놀"},
-                    "result": {"count": 1},
-                },
-                "created_at": "2026-03-11T00:00:00",
+        }
+        yield {
+            "step": "done",
+            "message_id": str(uuid.uuid4()),
+            "role": "assistant",
+            "content": "타이레놀 정보를 찾았습니다.",
+            "metadata": {
+                "tool_name": "search_drug_info",
+                "query": {"item_name": "타이레놀"},
+                "result": {"count": 1},
             },
-            ensure_ascii=False,
-        )
+            "created_at": "2026-03-11T00:00:00",
+        }
 
     monkeypatch.setattr(AgentService, "process_query", fake_process_query)
 
@@ -123,8 +122,6 @@ async def test_disease_tool_uses_public_client(monkeypatch):
 
     assert result["count"] == 1
     assert result["items"][0]["disease_code"] == "J00"
-
-
 @pytest.mark.asyncio
 async def test_disease_client_uses_search_text_params(monkeypatch):
     captured = {}
@@ -189,6 +186,34 @@ async def test_hospital_tool_uses_public_client(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_pharmacy_tool_uses_public_client(monkeypatch):
+    async def fake_search_pharmacies(self, **kwargs):
+        return {
+            "query": kwargs,
+            "count": 1,
+            "items": [{"pharmacy_name": "신도림온누리약국"}],
+        }
+
+    monkeypatch.setattr(
+        PublicMedicalDataClient,
+        "search_pharmacies",
+        fake_search_pharmacies,
+    )
+
+    result = await search_pharmacy_info.ainvoke(
+        {
+            "pharmacy_name": "온누리약국",
+            "region_keyword": "서울 구로구",
+            "limit": 2,
+        }
+    )
+
+    assert result["count"] == 1
+    assert result["items"][0]["pharmacy_name"] == "신도림온누리약국"
+    assert result["query"]["pharmacy_name"] == "온누리약국"
+
+
+@pytest.mark.asyncio
 async def test_hospital_client_supports_region_and_department(monkeypatch):
     captured = {}
 
@@ -247,37 +272,87 @@ async def test_hospital_client_supports_region_and_department(monkeypatch):
     assert result["items"][0]["emdong_name"] == "신림동"
 
 
-def test_hospital_client_filters_region_keyword():
+@pytest.mark.asyncio
+async def test_pharmacy_client_supports_region_and_location_filters(monkeypatch):
+    captured = {}
+
+    async def fake_request(self, *, base_url, endpoint, params):
+        captured["base_url"] = base_url
+        captured["endpoint"] = endpoint
+        captured["params"] = params
+        return {
+            "response": {
+                "body": {
+                    "items": {
+                        "item": [
+                            {
+                                "yadmNm": "신도림온누리약국",
+                                "sidoCdNm": "서울특별시",
+                                "sgguCdNm": "구로구",
+                                "emdongNm": "신도림동",
+                                "addr": "서울특별시 구로구 신도림동 123-4",
+                                "telno": "02-123-4567",
+                                "hospUrl": None,
+                                "XPos": 126.89,
+                                "YPos": 37.51,
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+
+    monkeypatch.setattr(PublicMedicalDataClient, "_request", fake_request)
+
     client = PublicMedicalDataClient()
+    result = await client.search_pharmacies(
+        pharmacy_name=None,
+        region_keyword="서울 구로구 신도림동",
+        x_pos=126.89,
+        y_pos=37.51,
+        radius=500,
+        limit=10,
+    )
+
+    assert captured["endpoint"] == "/getParmacyBasisList"
+    assert captured["params"]["sidoCd"] == "110000"
+    assert captured["params"]["sgguCd"] == "110005"
+    assert captured["params"]["emdongNm"] == "신도림동"
+    assert captured["params"]["xPos"] == "126.89"
+    assert captured["params"]["yPos"] == "37.51"
+    assert captured["params"]["radius"] == "500"
+    assert result["count"] == 1
+    assert result["items"][0]["pharmacy_name"] == "신도림온누리약국"
+    assert result["items"][0]["sggu_name"] == "구로구"
+
+
+def test_hospital_client_filters_region_keyword():
     items = [
         {"yadmNm": "구로디지털정형외과의원", "addr": "서울특별시 관악구 조원로 20"},
         {"yadmNm": "반도정형외과병원", "addr": "서울특별시 중구 동호로 202"},
     ]
 
-    filtered = client._filter_hospital_items(items, region_keyword="구로디지털")
+    filtered = filter_hospital_items(items, region_keyword="구로디지털")
 
     assert len(filtered) == 1
     assert filtered[0]["yadmNm"] == "구로디지털정형외과의원"
 
 
 def test_hospital_client_prefers_department_name_matches():
-    client = PublicMedicalDataClient()
     items = [
         {"yadmNm": "윤안과의원", "addr": "서울 성동구 금호동4가"},
         {"yadmNm": "금호퍼스트내과의원", "addr": "서울 성동구 금호동4가"},
         {"yadmNm": "성모우리이비인후과의원", "addr": "서울 성동구 금호동1가"},
     ]
 
-    filtered = client._prefer_department_name_matches(items, department_name="안과")
+    filtered = prefer_department_name_matches(items, department_name="안과")
 
     assert len(filtered) == 1
     assert filtered[0]["yadmNm"] == "윤안과의원"
 
 
 def test_hospital_client_parses_combined_search_text():
-    client = PublicMedicalDataClient()
-
-    parsed = client._parse_hospital_search_text(
+    parsed = parse_hospital_search_text(
         hospital_name="구로디지털 정형외과",
         region_keyword=None,
         department_name=None,
@@ -287,9 +362,7 @@ def test_hospital_client_parses_combined_search_text():
 
 
 def test_hospital_client_resolves_region_codes():
-    client = PublicMedicalDataClient()
-
-    resolved = client._resolve_region_codes(
+    resolved = resolve_region_codes(
         region_keyword="서울 구로구 구로디지털",
         sido_code=None,
         sggu_code=None,
@@ -299,9 +372,7 @@ def test_hospital_client_resolves_region_codes():
 
 
 def test_hospital_client_extracts_emdong_name():
-    client = PublicMedicalDataClient()
-
-    emdong_name = client._extract_emdong_name("서울 신당동")
+    emdong_name = extract_emdong_name("서울 신당동")
 
     assert emdong_name == "신당동"
 
@@ -346,6 +417,36 @@ def test_agent_service_strips_inline_metadata_from_content():
     assert content == "병원 안내입니다."
 
 
+def test_agent_service_translates_model_chunk_to_done_event():
+    service = AgentService()
+
+    class FakeMessage:
+        tool_calls = [
+            {
+                "name": "AgentResponse",
+                "args": {
+                    "message_id": "msg-1",
+                    "content": "병원 안내입니다.\n\nmetadata: {\"tool\": \"search_hospital_info\"}",
+                    "metadata": {"tool_name": "search_hospital_info"},
+                },
+            }
+        ]
+
+    chunk = {
+        "model": {
+            "messages": [FakeMessage()],
+        }
+    }
+
+    events = service._translate_chunk_events(chunk)
+
+    assert len(events) == 1
+    assert events[0]["step"] == "done"
+    assert events[0]["message_id"] == "msg-1"
+    assert events[0]["content"] == "병원 안내입니다."
+    assert events[0]["metadata"]["tool_name"] == "search_hospital_info"
+
+
 @pytest.mark.asyncio
 async def test_hospital_client_increases_rows_for_broad_area_search(monkeypatch):
     captured = {}
@@ -367,8 +468,27 @@ async def test_hospital_client_increases_rows_for_broad_area_search(monkeypatch)
     assert captured["params"]["numOfRows"] == 30
 
 
-def test_public_client_parses_xml_even_with_json_content_type():
+@pytest.mark.asyncio
+async def test_pharmacy_client_increases_rows_for_broad_area_search(monkeypatch):
+    captured = {}
+
+    async def fake_request(self, *, base_url, endpoint, params):
+        captured["params"] = params
+        return {"response": {"body": {"items": {"item": []}}}}
+
+    monkeypatch.setattr(PublicMedicalDataClient, "_request", fake_request)
+
     client = PublicMedicalDataClient()
+    await client.search_pharmacies(
+        pharmacy_name=None,
+        region_keyword="서울 신당동",
+        limit=5,
+    )
+
+    assert captured["params"]["numOfRows"] == 30
+
+
+def test_public_client_parses_xml_even_with_json_content_type():
     response = httpx.Response(
         200,
         headers={"content-type": "application/json"},
@@ -384,6 +504,7 @@ def test_public_client_parses_xml_even_with_json_content_type():
 </response>""",
     )
 
-    parsed = client._parse_response(response)
+    parsed = parse_public_data_response(response)
 
     assert parsed["response"]["body"]["items"]["item"]["itemName"] == "타이레놀정160mg"
+
