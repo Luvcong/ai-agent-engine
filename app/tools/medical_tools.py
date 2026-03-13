@@ -7,7 +7,7 @@ from langchain_core.tools import tool
 from app.clients.public_data import PublicMedicalDataClient
 from app.core.config import settings
 
-# TODO: 추후 규칙 기반 정렬 또는 리랭킹 로직 적용 필요
+# TODO: 추후 규칙 기반 정렬 또는 리랭킹 로직 적용 필요 - 현재 단순 슬라이싱
 def _truncate_items(items: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
     return items[:limit]
 
