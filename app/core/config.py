@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     DRUG_SEARCH_LIMIT: int = 5
     DISEASE_SEARCH_LIMIT: int = 5
     HOSPITAL_SEARCH_LIMIT: int = 5
+    PHARMACY_SEARCH_LIMIT: int = 5
 
     # LangGraph checkpointer의 SQLite 파일 저장 위치
     SQLITE_CHECKPOINTER_PATH: str = "app/data/checkpoints.db"

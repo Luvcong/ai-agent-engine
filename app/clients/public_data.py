@@ -19,6 +19,7 @@ class PublicMedicalDataClient:
     DRUG_BASE_URL = "https://apis.data.go.kr/1471000/DrbEasyDrugInfoService"
     DISEASE_BASE_URL = "https://apis.data.go.kr/B551182/diseaseInfoService1"
     HOSPITAL_BASE_URL = "https://apis.data.go.kr/B551182/hospInfoServicev2"
+    PHARMACY_BASE_URL = "https://apis.data.go.kr/B551182/pharmacyInfoService"
 
     def __init__(self) -> None:
         self.service_key = settings.PUBLIC_DATA_API_KEY
@@ -236,6 +237,113 @@ class PublicMedicalDataClient:
                     "telephone": item.get("telno"),
                     "homepage": item.get("hospUrl"),
                     "establishment_date": item.get("estbDd"),
+                    "x_pos": item.get("XPos"),
+                    "y_pos": item.get("YPos"),
+                }
+                for item in filtered_items
+            ],
+        }
+
+    async def search_pharmacies(
+        self,
+        *,
+        pharmacy_name: str | None = None,
+        region_keyword: str | None = None,
+        sido_code: str | None = None,
+        sggu_code: str | None = None,
+        emdong_name: str | None = None,
+        x_pos: str | float | None = None,
+        y_pos: str | float | None = None,
+        radius: str | int | None = None,
+        page_no: int = 1,
+        limit: int = 5,
+    ) -> dict[str, Any]:
+        resolved_sido_code, resolved_sggu_code, parsed_region_keyword = (
+            self._resolve_region_codes(
+                region_keyword=region_keyword,
+                sido_code=sido_code,
+                sggu_code=sggu_code,
+            )
+        )
+        resolved_emdong_name = emdong_name or self._extract_emdong_name(
+            parsed_region_keyword
+        )
+        if resolved_emdong_name and parsed_region_keyword == resolved_emdong_name:
+            parsed_region_keyword = None
+
+        params: dict[str, Any] = {
+            "pageNo": page_no,
+            "numOfRows": limit,
+        }
+        if pharmacy_name:
+            params["yadmNm"] = pharmacy_name
+        if resolved_sido_code:
+            params["sidoCd"] = resolved_sido_code
+        if resolved_sggu_code:
+            params["sgguCd"] = resolved_sggu_code
+        if resolved_emdong_name:
+            params["emdongNm"] = resolved_emdong_name
+        if x_pos is not None:
+            params["xPos"] = str(x_pos)
+        if y_pos is not None:
+            params["yPos"] = str(y_pos)
+        if radius is not None:
+            params["radius"] = str(radius)
+
+        if not any(
+            [
+                pharmacy_name,
+                parsed_region_keyword,
+                resolved_sido_code,
+                resolved_sggu_code,
+                resolved_emdong_name,
+                x_pos,
+                y_pos,
+                radius,
+            ]
+        ):
+            raise ValueError("약국 검색에는 최소 1개 이상의 검색 조건이 필요합니다.")
+
+        if (
+            "yadmNm" not in params
+            and any(key in params for key in ("emdongNm", "sidoCd", "sgguCd"))
+            and params["numOfRows"] < 30
+        ):
+            params["numOfRows"] = 30
+
+        data = await self._request(
+            base_url=self.PHARMACY_BASE_URL,
+            endpoint="/getParmacyBasisList",
+            params=params,
+        )
+        items = self._extract_items(data)
+        filtered_items = self._filter_hospital_items(
+            items,
+            region_keyword=parsed_region_keyword,
+        )
+
+        return {
+            "query": {
+                "pharmacy_name": pharmacy_name,
+                "region_keyword": parsed_region_keyword,
+                "sido_code": resolved_sido_code,
+                "sggu_code": resolved_sggu_code,
+                "emdong_name": resolved_emdong_name,
+                "x_pos": str(x_pos) if x_pos is not None else None,
+                "y_pos": str(y_pos) if y_pos is not None else None,
+                "radius": str(radius) if radius is not None else None,
+            },
+            "count": len(filtered_items),
+            "items": [
+                {
+                    "pharmacy_name": item.get("yadmNm"),
+                    "sido_name": item.get("sidoCdNm"),
+                    "sggu_name": item.get("sgguCdNm"),
+                    "emdong_name": item.get("emdongNm"),
+                    "address": item.get("addr"),
+                    "telephone": item.get("telno"),
+                    "homepage": item.get("hospUrl"),
+                    "post_no": item.get("postNo"),
                     "x_pos": item.get("XPos"),
                     "y_pos": item.get("YPos"),
                 }

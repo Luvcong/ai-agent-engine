@@ -82,6 +82,35 @@ async def search_hospital_info(
 
 
 @tool
+async def search_pharmacy_info(
+    pharmacy_name: str | None = None,
+    region_keyword: str | None = None,
+    sido_code: str | None = None,
+    sggu_code: str | None = None,
+    emdong_name: str | None = None,
+    x_pos: str | float | None = None,
+    y_pos: str | float | None = None,
+    radius: str | int | None = None,
+    limit: int = settings.PHARMACY_SEARCH_LIMIT,
+) -> dict[str, Any]:
+    """약국명, 지역, 좌표 반경 조건으로 약국 기본 정보를 조회합니다."""
+    client = PublicMedicalDataClient()
+    result = await client.search_pharmacies(
+        pharmacy_name=pharmacy_name,
+        region_keyword=region_keyword,
+        sido_code=sido_code,
+        sggu_code=sggu_code,
+        emdong_name=emdong_name,
+        x_pos=x_pos,
+        y_pos=y_pos,
+        radius=radius,
+        limit=limit,
+    )
+    result["items"] = _truncate_items(result["items"], limit)
+    return result
+
+
+@tool
 async def resolve_region_information(region_text: str) -> dict[str, Any]:
     """사용자가 말한 지역명을 시도/시군구/읍면동 기준으로 해석하고, 애매하면 재질문이 필요한지 판단합니다."""
     client = PublicMedicalDataClient()

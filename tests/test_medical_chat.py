@@ -12,6 +12,7 @@ from app.tools.medical_tools import (
     search_disease_info,
     search_drug_info,
     search_hospital_info,
+    search_pharmacy_info,
 )
 
 
@@ -189,6 +190,34 @@ async def test_hospital_tool_uses_public_client(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_pharmacy_tool_uses_public_client(monkeypatch):
+    async def fake_search_pharmacies(self, **kwargs):
+        return {
+            "query": kwargs,
+            "count": 1,
+            "items": [{"pharmacy_name": "온누리건강약국"}],
+        }
+
+    monkeypatch.setattr(
+        PublicMedicalDataClient,
+        "search_pharmacies",
+        fake_search_pharmacies,
+    )
+
+    result = await search_pharmacy_info.ainvoke(
+        {
+            "pharmacy_name": "온누리건강약국",
+            "region_keyword": "서울 중랑구",
+            "limit": 2,
+        }
+    )
+
+    assert result["count"] == 1
+    assert result["items"][0]["pharmacy_name"] == "온누리건강약국"
+    assert result["query"]["region_keyword"] == "서울 중랑구"
+
+
+@pytest.mark.asyncio
 async def test_hospital_client_supports_region_and_department(monkeypatch):
     captured = {}
 
@@ -245,6 +274,62 @@ async def test_hospital_client_supports_region_and_department(monkeypatch):
     assert result["items"][0]["sido_name"] == "서울특별시"
     assert result["items"][0]["sggu_name"] == "관악구"
     assert result["items"][0]["emdong_name"] == "신림동"
+
+
+@pytest.mark.asyncio
+async def test_pharmacy_client_supports_region_and_radius(monkeypatch):
+    captured = {}
+
+    async def fake_request(self, *, base_url, endpoint, params):
+        captured["base_url"] = base_url
+        captured["endpoint"] = endpoint
+        captured["params"] = params
+        return {
+            "response": {
+                "body": {
+                    "items": {
+                        "item": [
+                            {
+                                "yadmNm": "온누리건강약국",
+                                "sidoCdNm": "서울특별시",
+                                "sgguCdNm": "중랑구",
+                                "emdongNm": "신내동",
+                                "addr": "서울특별시 중랑구 신내로 72",
+                                "telno": "02-123-4567",
+                                "hospUrl": None,
+                                "postNo": "02000",
+                                "XPos": 127.0965441,
+                                "YPos": 37.6076556,
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+
+    monkeypatch.setattr(PublicMedicalDataClient, "_request", fake_request)
+
+    client = PublicMedicalDataClient()
+    result = await client.search_pharmacies(
+        pharmacy_name=None,
+        region_keyword="서울 중랑구 신내동",
+        x_pos=127.09,
+        y_pos=37.60,
+        radius=3000,
+        limit=10,
+    )
+
+    assert captured["base_url"] == client.PHARMACY_BASE_URL
+    assert captured["endpoint"] == "/getParmacyBasisList"
+    assert captured["params"]["sidoCd"] == "110000"
+    assert captured["params"]["sgguCd"] == "110019"
+    assert captured["params"]["emdongNm"] == "신내동"
+    assert captured["params"]["xPos"] == "127.09"
+    assert captured["params"]["yPos"] == "37.6"
+    assert captured["params"]["radius"] == "3000"
+    assert result["count"] == 1
+    assert result["items"][0]["pharmacy_name"] == "온누리건강약국"
+    assert result["items"][0]["sggu_name"] == "중랑구"
 
 
 def test_hospital_client_filters_region_keyword():
@@ -361,6 +446,26 @@ async def test_hospital_client_increases_rows_for_broad_area_search(monkeypatch)
         hospital_name=None,
         region_keyword="서울 신당동",
         department_name="안과",
+        limit=5,
+    )
+
+    assert captured["params"]["numOfRows"] == 30
+
+
+@pytest.mark.asyncio
+async def test_pharmacy_client_increases_rows_for_broad_area_search(monkeypatch):
+    captured = {}
+
+    async def fake_request(self, *, base_url, endpoint, params):
+        captured["params"] = params
+        return {"response": {"body": {"items": {"item": []}}}}
+
+    monkeypatch.setattr(PublicMedicalDataClient, "_request", fake_request)
+
+    client = PublicMedicalDataClient()
+    await client.search_pharmacies(
+        pharmacy_name=None,
+        region_keyword="서울 중랑구 신내동",
         limit=5,
     )
 
