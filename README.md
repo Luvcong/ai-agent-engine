@@ -1,12 +1,18 @@
 # Medical Info Agent
 
-공공데이터 API와 OpenAI LLM, LangChain Agent를 결합한 의료 정보 조회 서비스입니다.  
-질병, 의약품, 병원, 약국, 지역 정보를 질문하면 Agent가 적절한 tool을 자동 선택해 공공데이터 기반 결과를 반환합니다.
+공공데이터 API, Elasticsearch, OpenAI LLM, LangChain Agent를 결합한 의료 정보 조회 서비스입니다.  
+질병, 의약품, 병원, 약국, 지역 정보를 질문하면 Agent가 적절한 tool을 자동 선택해 공공데이터와 Elasticsearch 기반 결과를 반환합니다.
 
 ## 개요
 
 LangChain `create_agent()`를 사용하여 **의료 정보 조회 AI 에이전트**를 구현합니다.  
-건강보험심사평가원 질병정보서비스, 식품의약품안전처 의약품개요정보(e약은요), 건강보험심사평가원 병원정보서비스, 건강보험심사평가원 약국정보서비스를 활용해 질병 코드, 의약품 개요, 병원/약국 기본정보를 종합적으로 제공합니다.
+- 건강보험심사평가원 질병정보서비스
+- 식품의약품안전처 의약품개요정보(e약은요)
+- 건강보험심사평가원 병원정보서비스
+- 건강보험심사평가원 약국정보서비스
+- Elasticsearch 기반 질병정보 조회 서비스
+
+질병 코드, 질병 설명/가이드라인, 의약품 개요, 병원/약국 기본정보를 종합적으로 제공합니다.
 
 ## 아키텍처
 
@@ -21,6 +27,7 @@ LangChain Agent (OpenAI GPT-4.1)
 │ Tool 3: resolve_region_information (지역명 판별)    │
 │ Tool 4: search_hospital_info      (HIRA 병원정보)   │
 │ Tool 5: search_pharmacy_info      (HIRA 약국정보)   │
+│ Tool 6: search_disease_knowledge  (Elasticsearch)   │
 └─────────────────────────────────────────────────────┘
     ↓
 LLM 응답 (step:model -> step:tools -> step:done)
@@ -32,6 +39,11 @@ LLM 응답 (step:model -> step:tools -> step:done)
 - **API**: 건강보험심사평가원 질병정보서비스 `getDissNameCodeList1`
 - **기능**: 질병명에 해당하는 질병코드와 명칭 조회
 - **질문 예시**: `"결막염 질병코드 알려줘"`, `"감기 질병명 조회"`
+
+### Tool 1-2: `search_disease_knowledge` - 질병 설명 / 치료 원칙 조회
+- **Backend**: Elasticsearch `edu-collection`
+- **기능**: 질병 설명, 치료 원칙, 생활관리, 가이드라인 내용 조회
+- **질문 예시**: `"2형 당뇨병 치료 원칙 알려줘"`, `"당뇨병 백신 권고 내용 찾아줘"`
 
 ### Tool 2: `search_drug_info` - 의약품 개요 조회
 - **API**: 식품의약품안전처 의약품개요정보 `getDrbEasyDrugList`
@@ -58,6 +70,7 @@ LLM 응답 (step:model -> step:tools -> step:done)
 - `"타이레놀 정보 알려주고 부작용도 정리해줘"` -> 의약품 조회
 - `"결막염 질병코드와 가까운 안과 알려줘"` -> 질병 조회 + 병원 검색
 - `"서울 중랑구 신내동 약국 찾아줘"` -> 지역 판별 + 약국 검색
+- `"2형 당뇨병 치료 원칙 알려줘"` -> Elasticsearch 질병 내용 조회
 
 ## 프로젝트 구조
 
@@ -69,6 +82,7 @@ app/
 ├── api/routes/
 │   └── chat.py             # POST /api/v1/chat
 ├── clients/
+│   ├── elasticsearch.py    # Elasticsearch 질병 조회 client
 │   └── public_data.py      # 공공데이터 API 비동기 client
 ├── core/
 │   └── config.py           # OpenAI / 공공데이터 / 검색 limit 설정
@@ -87,6 +101,7 @@ app/
 - 식품의약품안전처 의약품개요정보(e약은요)
 - 건강보험심사평가원 병원정보서비스
 - 건강보험심사평가원 약국정보서비스
+- Elasticsearch `edu-collection`
 
 ### API 키 설정
 
@@ -96,6 +111,11 @@ OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4.1
 PUBLIC_DATA_API_KEY=...
 PUBLIC_DATA_TIMEOUT=20
+ELASTICSEARCH_URL=...
+ELASTICSEARCH_USERNAME=elastic
+ELASTICSEARCH_PASSWORD=...
+ELASTICSEARCH_INDEX=...
+ELASTICSEARCH_TIMEOUT=20
 SQLITE_CHECKPOINTER_PATH=app/data/checkpoints.db
 ```
 

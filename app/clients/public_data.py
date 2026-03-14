@@ -440,7 +440,12 @@ class PublicMedicalDataClient:
             timeout=self.timeout,
             follow_redirects=True,
         ) as client:
-            response = await client.get(endpoint, params=request_params)
+            try:
+                response = await client.get(endpoint, params=request_params)
+            except httpx.ConnectError as exc:
+                raise ValueError(
+                    "공공데이터 API 서버에 연결할 수 없습니다. 네트워크 또는 DNS 설정을 확인하세요."
+                ) from exc
             if response.status_code == 401:
                 raise ValueError(
                     "공공데이터 API 인증에 실패했습니다. PUBLIC_DATA_API_KEY 값을 확인하세요."

@@ -4,6 +4,7 @@ from typing import Any
 
 from langchain_core.tools import tool
 
+from app.clients.elasticsearch import ElasticDiseaseSearchClient
 from app.clients.public_data import PublicMedicalDataClient
 from app.core.config import settings
 
@@ -38,6 +39,29 @@ async def search_disease_info(
     client = PublicMedicalDataClient()
     result = await client.search_diseases(
         query=disease_name,
+        limit=limit,
+    )
+    result["items"] = _truncate_items(result["items"], limit)
+    return result
+
+
+@tool
+async def search_disease_knowledge(
+    query: str,
+    domain: int | None = None,
+    source: int | None = None,
+    source_spec: str | None = None,
+    creation_year: str | None = None,
+    limit: int = settings.ELASTICSEARCH_DISEASE_SEARCH_LIMIT,
+) -> dict[str, Any]:
+    """Elasticsearch의 edu-collection에서 질병 설명, 치료 원칙, 관리법, 가이드라인을 조회합니다."""
+    client = ElasticDiseaseSearchClient()
+    result = await client.search_disease_knowledge(
+        query=query,
+        domain=domain,
+        source=source,
+        source_spec=source_spec,
+        creation_year=creation_year,
         limit=limit,
     )
     result["items"] = _truncate_items(result["items"], limit)

@@ -25,11 +25,19 @@ class Settings(BaseSettings):
     PUBLIC_DATA_API_KEY: str = ""
     PUBLIC_DATA_TIMEOUT: int = 20
 
+    # Elasticsearch 조회용 설정
+    ELASTICSEARCH_URL: str = ""
+    ELASTICSEARCH_USERNAME: str = ""
+    ELASTICSEARCH_PASSWORD: str = ""
+    ELASTICSEARCH_INDEX: str = "edu-collection"
+    ELASTICSEARCH_TIMEOUT: int = 20
+
     # API 조회 limit 수 설정
     DRUG_SEARCH_LIMIT: int = 5
     DISEASE_SEARCH_LIMIT: int = 5
     HOSPITAL_SEARCH_LIMIT: int = 5
     PHARMACY_SEARCH_LIMIT: int = 5
+    ELASTICSEARCH_DISEASE_SEARCH_LIMIT: int = 5
 
     # LangGraph checkpointer의 SQLite 파일 저장 위치
     SQLITE_CHECKPOINTER_PATH: str = "app/data/checkpoints.db"

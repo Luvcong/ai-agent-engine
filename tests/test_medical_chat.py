@@ -5,10 +5,13 @@ import pytest
 from fastapi.testclient import TestClient
 import httpx
 
+from app.clients.elasticsearch import ElasticDiseaseSearchClient
 from app.clients.public_data import PublicMedicalDataClient
+from app.core.config import settings
 from app.services.agent_service import AgentService
 from app.tools.medical_tools import (
     resolve_region_information,
+    search_disease_knowledge,
     search_disease_info,
     search_drug_info,
     search_hospital_info,
@@ -127,6 +130,39 @@ async def test_disease_tool_uses_public_client(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_elastic_disease_tool_uses_search_client(monkeypatch):
+    async def fake_search_disease_knowledge(self, **kwargs):
+        return {
+            "query": kwargs,
+            "count": 1,
+            "items": [
+                {
+                    "document_id": "433765_1",
+                    "content": "2형 당뇨병 환자는 혈당 조절을 통해 합병증을 예방해야 합니다.",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(
+        ElasticDiseaseSearchClient,
+        "search_disease_knowledge",
+        fake_search_disease_knowledge,
+    )
+
+    result = await search_disease_knowledge.ainvoke(
+        {
+            "query": "2형 당뇨병 치료 원칙",
+            "source_spec": "대한의학회",
+            "limit": 3,
+        }
+    )
+
+    assert result["count"] == 1
+    assert result["query"]["query"] == "2형 당뇨병 치료 원칙"
+    assert result["items"][0]["document_id"] == "433765_1"
+
+
+@pytest.mark.asyncio
 async def test_disease_client_uses_search_text_params(monkeypatch):
     captured = {}
 
@@ -156,6 +192,93 @@ async def test_disease_client_uses_search_text_params(monkeypatch):
     assert captured["params"]["searchText"] == "결막염"
     assert captured["params"]["medTp"] == "1"
     assert result["items"][0]["disease_code"] == "H10"
+
+
+@pytest.mark.asyncio
+async def test_public_client_returns_friendly_message_for_connect_error(monkeypatch):
+    async def fake_get(self, endpoint, params=None):
+        raise httpx.ConnectError("dns failed")
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    client = PublicMedicalDataClient()
+
+    with pytest.raises(ValueError) as exc_info:
+        await client.search_hospitals(hospital_name="성모온정신건강의학과", limit=1)
+
+    assert "네트워크 또는 DNS 설정" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_elastic_client_builds_search_payload(monkeypatch):
+    captured = {}
+
+    monkeypatch.setattr(settings, "ELASTICSEARCH_URL", "https://example.com")
+    monkeypatch.setattr(settings, "ELASTICSEARCH_INDEX", "edu-collection")
+    monkeypatch.setattr(settings, "ELASTICSEARCH_USERNAME", "elastic")
+    monkeypatch.setattr(settings, "ELASTICSEARCH_PASSWORD", "secret")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["method"] = request.method
+        captured["url"] = str(request.url)
+        captured["payload"] = request.content.decode("utf-8")
+        return httpx.Response(
+            200,
+            json={
+                "hits": {
+                    "hits": [
+                        {
+                            "_index": "edu-collection",
+                            "_id": "433765_1",
+                            "_score": 4.2,
+                            "_source": {
+                                "c_id": ["433765_1"],
+                                "domain": [2],
+                                "source": [4],
+                                "source_spec": ["대한의학회"],
+                                "creation_year": ["2022"],
+                                "content": [
+                                    "2형 당뇨병 환자는 혈당 조절을 통해 당뇨병 합병증을 예방해야 합니다."
+                                ],
+                            },
+                            "highlight": {
+                                "content": [
+                                    "<em>당뇨병</em> 환자는 혈당 조절을 통해 합병증을 예방해야 합니다."
+                                ]
+                            },
+                        }
+                    ]
+                }
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_async_client = httpx.AsyncClient
+
+    def fake_async_client(*args, **kwargs):
+        kwargs["transport"] = transport
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", fake_async_client)
+
+    client = ElasticDiseaseSearchClient()
+    result = await client.search_disease_knowledge(
+        query="2형 당뇨병 치료",
+        domain=2,
+        source=4,
+        source_spec="대한의학회",
+        creation_year="2022",
+        limit=2,
+    )
+
+    assert captured["method"] == "POST"
+    assert captured["url"].endswith("/edu-collection/_search")
+    assert '"query":"2형 당뇨병 치료"' in captured["payload"]
+    assert '"match_phrase":{"source_spec":"대한의학회"}' in captured["payload"]
+    assert result["count"] == 1
+    assert result["items"][0]["document_id"] == "433765_1"
+    assert result["items"][0]["source_spec"] == "대한의학회"
+    assert result["items"][0]["excerpt"].startswith("<em>당뇨병</em>")
 
 
 @pytest.mark.asyncio
@@ -492,3 +615,29 @@ def test_public_client_parses_xml_even_with_json_content_type():
     parsed = client._parse_response(response)
 
     assert parsed["response"]["body"]["items"]["item"]["itemName"] == "타이레놀정160mg"
+
+
+def test_elastic_client_maps_scalar_source_fields():
+    client = ElasticDiseaseSearchClient()
+
+    mapped = client._map_hit(
+        {
+            "_index": "edu-collection",
+            "_id": "433765_1",
+            "_score": 1.0,
+            "_source": {
+                "c_id": "433765_1",
+                "domain": 2,
+                "source": 4,
+                "source_spec": "대한의학회",
+                "creation_year": "2022",
+                "content": "2형 당뇨병 환자는 초기부터 생활습관 교정이 필요합니다.",
+            },
+        }
+    )
+
+    assert mapped["c_id"] == "433765_1"
+    assert mapped["domain"] == 2
+    assert mapped["source"] == 4
+    assert mapped["source_spec"] == "대한의학회"
+    assert mapped["content"].startswith("2형 당뇨병")

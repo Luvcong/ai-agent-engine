@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.models.agent_response import AgentResponse
 from app.tools.medical_tools import (
     resolve_region_information,
+    search_disease_knowledge,
     search_disease_info,
     search_drug_info,
     search_hospital_info,
@@ -71,6 +72,7 @@ def create_medical_agent():
         model=model,
         tools=[
             resolve_region_information,  # 지역명 정규화
+            search_disease_knowledge, # 질병설명/가이드라인조회
             search_disease_info,     # 질병정보조회
             search_drug_info,        # 의약품정보조회
             search_hospital_info,    # 병원정보조회

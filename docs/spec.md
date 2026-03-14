@@ -7,7 +7,7 @@
 
 ## POST `/api/v1/chat`
 
-사용자 질문을 받아 LangChain Agent가 적절한 공공데이터 tool을 선택하고 SSE로 응답합니다.
+사용자 질문을 받아 LangChain Agent가 적절한 공공데이터 또는 Elasticsearch tool을 선택하고 SSE로 응답합니다.
 
 ### Request
 
@@ -30,5 +30,7 @@
 ## Tool Mapping
 
 - 질병 질문 -> `search_disease_info`
+- 질병 설명/가이드라인 질문 -> `search_disease_knowledge`
 - 의약품 질문 -> `search_drug_info`
 - 병원 질문 -> `search_hospital_info`
+- 약국 질문 -> `search_pharmacy_info`
