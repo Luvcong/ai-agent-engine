@@ -117,7 +117,17 @@ ELASTICSEARCH_PASSWORD=...
 ELASTICSEARCH_INDEX=...
 ELASTICSEARCH_TIMEOUT=20
 SQLITE_CHECKPOINTER_PATH=app/data/checkpoints.db
+OPIK_URL_OVERRIDE=https://www.comet.com/opik/api
+OPIK_API_KEY=...
+OPIK_WORKSPACE=...
+OPIK_PROJECT_NAME=medical-info-agent
 ```
+
+### Opik 연동
+- Opik Python SDK는 앱 시작 시 `configure_opik()`으로 초기화됩니다.
+- 실제 trace는 각 채팅 요청에서 `thread_id`를 그대로 사용해 `OpikTracer` callback으로 기록됩니다.
+- Cloud 사용 시 `OPIK_URL_OVERRIDE`, `OPIK_API_KEY`, `OPIK_WORKSPACE`, `OPIK_PROJECT_NAME`를 설정하면 됩니다.
+- Self-hosted 사용 시에는 일반적으로 `OPIK_URL_OVERRIDE`, `OPIK_PROJECT_NAME`만 설정하면 됩니다.
 
 ## 핵심 구현 포인트
 

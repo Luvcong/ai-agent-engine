@@ -28,6 +28,7 @@ except ModuleNotFoundError:  # pragma: no cover - package installed after uv syn
 # FastAPI lifespan 동안 하나의 checkpointer 인스턴스를 재사용
 _checkpointer = None
 _checkpointer_context = None
+_medical_agent = None
 
 
 async def init_checkpointer():
@@ -47,12 +48,20 @@ async def init_checkpointer():
     return _checkpointer
 
 
+async def init_medical_agent():
+    global _medical_agent
+    await init_checkpointer()
+    _medical_agent = create_medical_agent()
+    return _medical_agent
+
+
 async def close_checkpointer():
-    global _checkpointer, _checkpointer_context
+    global _checkpointer, _checkpointer_context, _medical_agent
     if _checkpointer_context is not None:
         await _checkpointer_context.__aexit__(None, None, None)
     _checkpointer = None
     _checkpointer_context = None
+    _medical_agent = None
 
 
 def get_checkpointer():
@@ -60,6 +69,13 @@ def get_checkpointer():
     if _checkpointer is None:
         return InMemorySaver()
     return _checkpointer
+
+
+def get_medical_agent():
+    global _medical_agent
+    if _medical_agent is None:
+        _medical_agent = create_medical_agent()
+    return _medical_agent
 
 
 def create_medical_agent():

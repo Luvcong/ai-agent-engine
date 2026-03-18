@@ -8,6 +8,22 @@ from app.clients.elasticsearch import ElasticDiseaseSearchClient
 from app.clients.public_data import PublicMedicalDataClient
 from app.core.config import settings
 
+
+def _tool_error_response(
+    *,
+    tool_name: str,
+    query: dict[str, Any],
+    error: str,
+) -> dict[str, Any]:
+    return {
+        "tool_name": tool_name,
+        "query": query,
+        "count": 0,
+        "items": [],
+        "error": error,
+    }
+
+
 # TODO: 추후 규칙 기반 정렬 또는 리랭킹 로직 적용 필요 - 현재 단순 슬라이싱
 def _truncate_items(items: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
     return items[:limit]
@@ -21,11 +37,18 @@ async def search_drug_info(
 ) -> dict[str, Any]:
     """의약품명으로 의약품개요정보(e약은요) API를 조회하여 효능, 사용법, 주의사항, 부작용, 보관법 등을 조회합니다."""
     client = PublicMedicalDataClient()
-    result = await client.search_drugs(
-        item_name=item_name,
-        enterprise_name=enterprise_name,
-        limit=limit,
-    )
+    try:
+        result = await client.search_drugs(
+            item_name=item_name,
+            enterprise_name=enterprise_name,
+            limit=limit,
+        )
+    except ValueError as exc:
+        return _tool_error_response(
+            tool_name="search_drug_info",
+            query={"item_name": item_name, "enterprise_name": enterprise_name},
+            error=str(exc),
+        )
     result["items"] = _truncate_items(result["items"], limit)
     return result
 
@@ -37,10 +60,17 @@ async def search_disease_info(
 ) -> dict[str, Any]:
     """질병명으로 질병명칭/코드 정보를 조회합니다."""
     client = PublicMedicalDataClient()
-    result = await client.search_diseases(
-        query=disease_name,
-        limit=limit,
-    )
+    try:
+        result = await client.search_diseases(
+            query=disease_name,
+            limit=limit,
+        )
+    except ValueError as exc:
+        return _tool_error_response(
+            tool_name="search_disease_info",
+            query={"disease_name": disease_name},
+            error=str(exc),
+        )
     result["items"] = _truncate_items(result["items"], limit)
     return result
 
@@ -86,21 +116,42 @@ async def search_hospital_info(
 ) -> dict[str, Any]:
     """병원명, 지역, 종별, 진료과, 좌표 반경 조건으로 병원 기본 정보를 조회합니다."""
     client = PublicMedicalDataClient()
-    result = await client.search_hospitals(
-        hospital_name=hospital_name,
-        region_keyword=region_keyword,
-        sido_code=sido_code,
-        sggu_code=sggu_code,
-        emdong_name=emdong_name,
-        hospital_type_name=hospital_type_name,
-        hospital_type_code=hospital_type_code,
-        department_name=department_name,
-        department_code=department_code,
-        x_pos=x_pos,
-        y_pos=y_pos,
-        radius=radius,
-        limit=limit,
-    )
+    query = {
+        "hospital_name": hospital_name,
+        "region_keyword": region_keyword,
+        "sido_code": sido_code,
+        "sggu_code": sggu_code,
+        "emdong_name": emdong_name,
+        "hospital_type_name": hospital_type_name,
+        "hospital_type_code": hospital_type_code,
+        "department_name": department_name,
+        "department_code": department_code,
+        "x_pos": x_pos,
+        "y_pos": y_pos,
+        "radius": radius,
+    }
+    try:
+        result = await client.search_hospitals(
+            hospital_name=hospital_name,
+            region_keyword=region_keyword,
+            sido_code=sido_code,
+            sggu_code=sggu_code,
+            emdong_name=emdong_name,
+            hospital_type_name=hospital_type_name,
+            hospital_type_code=hospital_type_code,
+            department_name=department_name,
+            department_code=department_code,
+            x_pos=x_pos,
+            y_pos=y_pos,
+            radius=radius,
+            limit=limit,
+        )
+    except ValueError as exc:
+        return _tool_error_response(
+            tool_name="search_hospital_info",
+            query=query,
+            error=str(exc),
+        )
     result["items"] = _truncate_items(result["items"], limit)
     return result
 
@@ -119,17 +170,34 @@ async def search_pharmacy_info(
 ) -> dict[str, Any]:
     """약국명, 지역, 좌표 반경 조건으로 약국 기본 정보를 조회합니다."""
     client = PublicMedicalDataClient()
-    result = await client.search_pharmacies(
-        pharmacy_name=pharmacy_name,
-        region_keyword=region_keyword,
-        sido_code=sido_code,
-        sggu_code=sggu_code,
-        emdong_name=emdong_name,
-        x_pos=x_pos,
-        y_pos=y_pos,
-        radius=radius,
-        limit=limit,
-    )
+    query = {
+        "pharmacy_name": pharmacy_name,
+        "region_keyword": region_keyword,
+        "sido_code": sido_code,
+        "sggu_code": sggu_code,
+        "emdong_name": emdong_name,
+        "x_pos": x_pos,
+        "y_pos": y_pos,
+        "radius": radius,
+    }
+    try:
+        result = await client.search_pharmacies(
+            pharmacy_name=pharmacy_name,
+            region_keyword=region_keyword,
+            sido_code=sido_code,
+            sggu_code=sggu_code,
+            emdong_name=emdong_name,
+            x_pos=x_pos,
+            y_pos=y_pos,
+            radius=radius,
+            limit=limit,
+        )
+    except ValueError as exc:
+        return _tool_error_response(
+            tool_name="search_pharmacy_info",
+            query=query,
+            error=str(exc),
+        )
     result["items"] = _truncate_items(result["items"], limit)
     return result
 

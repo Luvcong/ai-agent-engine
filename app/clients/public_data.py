@@ -446,6 +446,14 @@ class PublicMedicalDataClient:
                 raise ValueError(
                     "공공데이터 API 서버에 연결할 수 없습니다. 네트워크 또는 DNS 설정을 확인하세요."
                 ) from exc
+            except httpx.ReadTimeout as exc:
+                raise ValueError(
+                    "공공데이터 API 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+                ) from exc
+            except httpx.TimeoutException as exc:
+                raise ValueError(
+                    "공공데이터 API 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요."
+                ) from exc
             if response.status_code == 401:
                 raise ValueError(
                     "공공데이터 API 인증에 실패했습니다. PUBLIC_DATA_API_KEY 값을 확인하세요."

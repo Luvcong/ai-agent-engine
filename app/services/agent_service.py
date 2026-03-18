@@ -5,6 +5,7 @@ import json
 import uuid
 
 from app.core.config import settings
+from app.observability.opik import create_opik_tracer
 from app.utils.logger import log_execution, custom_logger
 
 from langchain_core.messages import HumanMessage
@@ -12,15 +13,12 @@ from langchain_core.messages import HumanMessage
 
 class AgentService:
     def __init__(self):
-        self.agent = None
-
         self.progress_queue: asyncio.Queue = asyncio.Queue()
 
-    def _create_agent(self, thread_id: uuid.UUID = None):
-        """LangChain 에이전트 생성"""
-        from app.agents.medical import create_medical_agent
-        # 의료 agent 생성
-        self.agent = create_medical_agent()
+    def _get_agent(self):
+        """공유 LangChain 에이전트를 반환합니다."""
+        from app.agents.medical import get_medical_agent
+        return get_medical_agent()
 
     def _sanitize_final_content(self, content: str | None) -> str:
         if not content:
@@ -41,17 +39,23 @@ class AgentService:
     @log_execution
     async def process_query(self, user_messages: str, thread_id: uuid.UUID):
         """LangChain Messages 형식의 쿼리를 처리하고 AIMessage 형식으로 반환합니다."""
+        opik_tracer = None
         try:
-            self._create_agent(thread_id=thread_id)
+            agent = self._get_agent()
+            opik_tracer = create_opik_tracer(str(thread_id))
 
             custom_logger.info(f"사용자 메시지: {user_messages}")
 
-            agent_stream = self.agent.astream(
+            config = {
+                "configurable": {"thread_id": str(thread_id)},
+                "recursion_limit": settings.DEEPAGENT_RECURSION_LIMIT,
+            }
+            if opik_tracer is not None:
+                config["callbacks"] = [opik_tracer]
+
+            agent_stream = agent.astream(
                 {"messages": [HumanMessage(content=user_messages)]},
-                config={
-                    "configurable": {"thread_id": str(thread_id)},
-                    "recursion_limit": settings.DEEPAGENT_RECURSION_LIMIT,
-                },
+                config=config,
                 stream_mode="updates",
             )
 
@@ -183,6 +187,10 @@ class AgentService:
                 "error": str(e)
             }
             yield json.dumps(error_response, ensure_ascii=False)
+        finally:
+            if opik_tracer is not None:
+                with contextlib.suppress(Exception):
+                    opik_tracer.flush()
 
     @log_execution
     def _handle_metadata(self, metadata) -> dict:

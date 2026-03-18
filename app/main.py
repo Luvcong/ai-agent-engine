@@ -2,8 +2,9 @@ from contextlib import asynccontextmanager
 import time
 from fastapi import FastAPI, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.agents.medical import close_checkpointer, init_checkpointer
+from app.agents.medical import close_checkpointer, init_medical_agent
 from app.core.config import settings
+from app.observability.opik import configure_opik
 from app.api.routes.threads import threads_router
 from app.api.routes.chat import chat_router
 from app.utils.logger import custom_logger
@@ -11,7 +12,8 @@ from app.utils.logger import custom_logger
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await init_checkpointer()
+    await init_medical_agent()
+    configure_opik()
     try:
         yield
     finally:

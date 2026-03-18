@@ -210,6 +210,36 @@ async def test_public_client_returns_friendly_message_for_connect_error(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_public_client_returns_friendly_message_for_read_timeout(monkeypatch):
+    async def fake_get(self, endpoint, params=None):
+        raise httpx.ReadTimeout("read timed out")
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    client = PublicMedicalDataClient()
+
+    with pytest.raises(ValueError) as exc_info:
+        await client.search_pharmacies(emdong_name="압구정동", limit=1)
+
+    assert "응답이 지연" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_search_pharmacy_tool_returns_structured_error_on_client_failure(monkeypatch):
+    async def fake_search_pharmacies(self, **kwargs):
+        raise ValueError("공공데이터 API 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.")
+
+    monkeypatch.setattr(PublicMedicalDataClient, "search_pharmacies", fake_search_pharmacies)
+
+    result = await search_pharmacy_info.ainvoke({"emdong_name": "압구정동", "limit": 3})
+
+    assert result["tool_name"] == "search_pharmacy_info"
+    assert result["count"] == 0
+    assert result["items"] == []
+    assert "응답이 지연" in result["error"]
+
+
+@pytest.mark.asyncio
 async def test_elastic_client_builds_search_payload(monkeypatch):
     captured = {}
 
