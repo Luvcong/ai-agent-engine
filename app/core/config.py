@@ -5,6 +5,7 @@ from pydantic import Field
 class OpikSettings(BaseSettings):
     """Opik configuration."""
 
+    ENABLED: bool = Field(default=True, description="Enable Opik tracing")
     URL_OVERRIDE: str | None = Field(default=None, description="Opik base URL")
     # Optional if you are using Opik Cloud:
     API_KEY: str | None = Field(default=None, description="opik cloud api key here")

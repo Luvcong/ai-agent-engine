@@ -510,25 +510,74 @@ class PublicMedicalDataClient:
 
     def _extract_items(self, data: dict[str, Any]) -> list[dict[str, Any]]:
         response = data.get("response", data)
+        if not isinstance(response, dict):
+            raise ValueError(
+                "공공데이터 API 응답 형식이 올바르지 않습니다."
+                f" response_type={type(response).__name__}"
+            )
+
+        header = response.get("header", {})
+        if isinstance(header, dict):
+            result_code = str(header.get("resultCode") or "").strip()
+            result_msg = str(header.get("resultMsg") or "").strip()
+            if result_code and result_code != "00":
+                raise ValueError(
+                    "공공데이터 API 오류가 발생했습니다."
+                    f" code={result_code}, message={result_msg or 'unknown'}"
+                )
+
         body = response.get("body", {})
+        if isinstance(body, str):
+            body = self._parse_nested_payload(body, field_name="body")
+            if body in (None, ""):
+                return []
+        if not isinstance(body, dict):
+            raise ValueError(
+                "공공데이터 API body 형식이 올바르지 않습니다."
+                f" body_type={type(body).__name__}"
+            )
+
         items = body.get("items", {})
+        if isinstance(items, str):
+            items = self._parse_nested_payload(items, field_name="items")
         if isinstance(items, dict):
             items = items.get("item", [])
+        if isinstance(items, str):
+            items = self._parse_nested_payload(items, field_name="item")
         if isinstance(items, dict):
             return [items]
         if isinstance(items, list):
             return items
+        if items in (None, ""):
+            return []
         return []
+
+    def _parse_nested_payload(self, payload: str, *, field_name: str) -> Any:
+        stripped_payload = payload.strip()
+        if not stripped_payload:
+            return None
+
+        if stripped_payload.startswith("{") or stripped_payload.startswith("["):
+            try:
+                return json.loads(stripped_payload)
+            except json.JSONDecodeError:
+                pass
+
+        if stripped_payload.startswith("<?xml") or stripped_payload.startswith("<"):
+            try:
+                return self._xml_to_dict(stripped_payload)
+            except ElementTree.ParseError:
+                pass
+
+        raise ValueError(
+            f"공공데이터 API {field_name}를 해석할 수 없습니다."
+            f" body_prefix={stripped_payload[:120]!r}"
+        )
 
     def _resolve_department_code(self, department_name: str | None) -> str | None:
         if not department_name:
             return None
         return DEPARTMENT_CODE_MAP.get(department_name.strip())
-
-    def _resolve_hospital_type_code(self, hospital_type_name: str | None) -> str | None:
-        if not hospital_type_name:
-            return None
-        return HOSPITAL_TYPE_CODE_MAP.get(hospital_type_name.strip())
 
     def _parse_hospital_search_text(
         self,
@@ -559,6 +608,11 @@ class PublicMedicalDataClient:
         parsed_region_keyword = region_part or region_keyword
 
         return parsed_hospital_name, parsed_region_keyword, matched_department_name
+
+    def _resolve_hospital_type_code(self, hospital_type_name: str | None) -> str | None:
+        if not hospital_type_name:
+            return None
+        return HOSPITAL_TYPE_CODE_MAP.get(hospital_type_name.strip())
 
     def _resolve_region_codes(
         self,

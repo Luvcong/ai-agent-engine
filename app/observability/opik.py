@@ -25,6 +25,11 @@ def _read_opik_value(env_name: str, settings_attr: str) -> str | None:
 
 @lru_cache(maxsize=1)
 def configure_opik() -> bool:
+    opik_settings = settings.OPIK
+    if opik_settings is not None and not opik_settings.ENABLED:
+        custom_logger.info("Opik is disabled because OPIK__ENABLED is set to false.")
+        return False
+
     api_key = _read_opik_value("OPIK_API_KEY", "API_KEY")
     workspace = _read_opik_value("OPIK_WORKSPACE", "WORKSPACE")
     url_override = _read_opik_value("OPIK_URL_OVERRIDE", "URL_OVERRIDE")
