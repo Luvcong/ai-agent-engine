@@ -11,6 +11,7 @@ from app.utils.logger import custom_logger
 
 
 @asynccontextmanager
+# FastAPI 시작/종료 시 에이전트와 체크포인터를 초기화하고 정리한다.
 async def lifespan(_: FastAPI):
     await init_medical_agent()
     configure_opik()
@@ -45,6 +46,7 @@ app.include_router(api_router)
 
 
 @app.middleware("http")
+# 모든 HTTP 요청의 시작/종료 시점과 처리 시간을 로그로 남긴다.
 async def log_requests(request: Request, call_next):
     custom_logger.info(f"➡️ 요청 시작: {request.method} {request.url.path}")
     start_time = time.time()
@@ -62,11 +64,13 @@ async def log_requests(request: Request, call_next):
 
 
 @app.get("/")
+# 서비스 기본 정보와 버전을 반환한다.
 async def root():
     return {"message": "Medical Info Agent API", "version": "0.1.0"}
 
 
 @app.get("/health")
+# 헬스 체크용 상태 값을 반환한다.
 async def health():
     return {"status": "healthy"}
 

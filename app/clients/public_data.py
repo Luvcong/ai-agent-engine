@@ -25,19 +25,10 @@ class PublicMedicalDataClient:
         self.service_key = settings.PUBLIC_DATA_API_KEY
         self.timeout = settings.PUBLIC_DATA_TIMEOUT
 
-    async def search_drugs(
-        self,
-        *,
-        item_name: str,
-        enterprise_name: str | None = None,
-        page_no: int = 1,
-        limit: int = 5,
-    ) -> dict[str, Any]:
-        params: dict[str, Any] = {
-            "itemName": item_name,
-            "pageNo": page_no,
-            "numOfRows": limit,
-        }
+    # 의약품명과 제약사명을 기준으로 약 정보를 조회해 필요한 필드만 정리해 반환한다.
+    async def search_drugs(self, *, item_name: str, enterprise_name: str | None = None, page_no: int = 1, limit: int = 5,) -> dict[str, Any]:
+        params: dict[str, Any] = {"itemName": item_name, "pageNo": page_no, "numOfRows": limit}
+
         if enterprise_name:
             params["entpName"] = enterprise_name
 
@@ -47,6 +38,7 @@ class PublicMedicalDataClient:
             params=params,
         )
         items = self._extract_items(data)
+        
         return {
             "query": {"item_name": item_name, "enterprise_name": enterprise_name},
             "count": len(items),
@@ -67,15 +59,8 @@ class PublicMedicalDataClient:
             ],
         }
 
-    async def search_diseases(
-        self,
-        *,
-        query: str,
-        page_no: int = 1,
-        limit: int = 5,
-        sickness_type: str = "1",
-        medical_type: str = "1",
-    ) -> dict[str, Any]:
+    # 질병명을 기준으로 질병 코드와 한글/영문 질병명을 조회한다.
+    async def search_diseases(self, *, query: str, page_no: int = 1, limit: int = 5, sickness_type: str = "1", medical_type: str = "1") -> dict[str, Any]:
         data = await self._request(
             base_url=self.DISEASE_BASE_URL,
             endpoint="/getDissNameCodeList1",
@@ -102,6 +87,7 @@ class PublicMedicalDataClient:
             ],
         }
 
+    # 병원명, 지역, 진료과, 병원 유형, 좌표 조건을 조합해 병원을 조회하고 후처리된 결과를 반환한다.
     async def search_hospitals(
         self,
         *,
@@ -244,6 +230,7 @@ class PublicMedicalDataClient:
             ],
         }
 
+    # 약국명, 지역, 좌표 조건으로 약국을 조회하고 지역 키워드 기준으로 한 번 더 걸러낸다.
     async def search_pharmacies(
         self,
         *,
@@ -351,6 +338,7 @@ class PublicMedicalDataClient:
             ],
         }
 
+    # 자유 입력된 지역 문자열에서 시도/시군구/읍면동 정보를 추출해 구조화된 형태로 돌려준다.
     def resolve_region_information(self, region_text: str) -> dict[str, Any]:
         normalized_text = region_text.strip()
         if not normalized_text:
@@ -420,47 +408,28 @@ class PublicMedicalDataClient:
             "aliases": [],
         }
 
-    async def _request(
-        self,
-        *,
-        base_url: str,
-        endpoint: str,
-        params: dict[str, Any],
-    ) -> dict[str, Any]:
+    # 공공데이터 API에 요청을 보내고 네트워크/인증 오류를 감싸서 예외로 변환한다.
+    async def _request(self, *, base_url: str, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
         if not self.service_key:
             raise ValueError("PUBLIC_DATA_API_KEY is not configured.")
 
-        request_params = {
-            "serviceKey": self.service_key,
-            "_type": "json",
-            **params,
-        }
-        async with httpx.AsyncClient(
-            base_url=base_url,
-            timeout=self.timeout,
-            follow_redirects=True,
-        ) as client:
+        request_params = {"serviceKey": self.service_key, "_type": "json", **params}
+
+        async with httpx.AsyncClient(base_url=base_url, timeout=self.timeout, follow_redirects=True) as client:
             try:
                 response = await client.get(endpoint, params=request_params)
             except httpx.ConnectError as exc:
-                raise ValueError(
-                    "공공데이터 API 서버에 연결할 수 없습니다. 네트워크 또는 DNS 설정을 확인하세요."
-                ) from exc
+                raise ValueError("공공데이터 API 서버에 연결할 수 없습니다. 네트워크 또는 DNS 설정을 확인하세요.") from exc
             except httpx.ReadTimeout as exc:
-                raise ValueError(
-                    "공공데이터 API 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
-                ) from exc
+                raise ValueError("공공데이터 API 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.") from exc
             except httpx.TimeoutException as exc:
-                raise ValueError(
-                    "공공데이터 API 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요."
-                ) from exc
+                raise ValueError("공공데이터 API 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.") from exc
             if response.status_code == 401:
-                raise ValueError(
-                    "공공데이터 API 인증에 실패했습니다. PUBLIC_DATA_API_KEY 값을 확인하세요."
-                )
+                raise ValueError("공공데이터 API 인증에 실패했습니다. PUBLIC_DATA_API_KEY 값을 확인하세요.")
             response.raise_for_status()
         return self._parse_response(response)
 
+    # 응답 본문이 JSON인지 XML인지 판별해 파이썬 dict 형태로 변환한다.
     def _parse_response(self, response: httpx.Response) -> dict[str, Any]:
         text = response.text.strip()
         if not text:
@@ -485,15 +454,14 @@ class PublicMedicalDataClient:
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            raise ValueError(
-                "공공데이터 API 응답을 해석할 수 없습니다."
-                f" content-type={content_type!r}, body_prefix={text[:120]!r}"
-            )
+            raise ValueError("공공데이터 API 응답을 해석할 수 없습니다." f" content-type={content_type!r}, body_prefix={text[:120]!r}")
 
+    # XML 문자열을 재귀 파싱 가능한 dict 구조로 변환한다.
     def _xml_to_dict(self, payload: str) -> dict[str, Any]:
         root = ElementTree.fromstring(payload)
         return {root.tag: self._xml_node_to_value(root)}
 
+    # XML 노드를 자식 구조에 맞춰 문자열 또는 dict/list 값으로 재귀 변환한다.
     def _xml_node_to_value(self, node: ElementTree.Element) -> Any:
         children = list(node)
         if not children:
@@ -508,23 +476,18 @@ class PublicMedicalDataClient:
             for key, values in grouped.items()
         }
 
+    # 공공데이터 표준 응답에서 body.items.item 목록만 추출해 리스트 형태로 통일한다.
     def _extract_items(self, data: dict[str, Any]) -> list[dict[str, Any]]:
         response = data.get("response", data)
         if not isinstance(response, dict):
-            raise ValueError(
-                "공공데이터 API 응답 형식이 올바르지 않습니다."
-                f" response_type={type(response).__name__}"
-            )
+            raise ValueError("공공데이터 API 응답 형식이 올바르지 않습니다." f" response_type={type(response).__name__}")
 
         header = response.get("header", {})
         if isinstance(header, dict):
             result_code = str(header.get("resultCode") or "").strip()
             result_msg = str(header.get("resultMsg") or "").strip()
             if result_code and result_code != "00":
-                raise ValueError(
-                    "공공데이터 API 오류가 발생했습니다."
-                    f" code={result_code}, message={result_msg or 'unknown'}"
-                )
+                raise ValueError("공공데이터 API 오류가 발생했습니다." f" code={result_code}, message={result_msg or 'unknown'}")
 
         body = response.get("body", {})
         if isinstance(body, str):
@@ -532,10 +495,7 @@ class PublicMedicalDataClient:
             if body in (None, ""):
                 return []
         if not isinstance(body, dict):
-            raise ValueError(
-                "공공데이터 API body 형식이 올바르지 않습니다."
-                f" body_type={type(body).__name__}"
-            )
+            raise ValueError("공공데이터 API body 형식이 올바르지 않습니다." f" body_type={type(body).__name__}")
 
         items = body.get("items", {})
         if isinstance(items, str):
@@ -552,6 +512,7 @@ class PublicMedicalDataClient:
             return []
         return []
 
+    # 문자열로 한 번 더 감싸진 JSON/XML payload를 실제 자료형으로 복원한다.
     def _parse_nested_payload(self, payload: str, *, field_name: str) -> Any:
         stripped_payload = payload.strip()
         if not stripped_payload:
@@ -574,18 +535,14 @@ class PublicMedicalDataClient:
             f" body_prefix={stripped_payload[:120]!r}"
         )
 
+    # 진료과명을 공공데이터 API에서 사용하는 진료과 코드로 변환한다.
     def _resolve_department_code(self, department_name: str | None) -> str | None:
         if not department_name:
             return None
         return DEPARTMENT_CODE_MAP.get(department_name.strip())
 
-    def _parse_hospital_search_text(
-        self,
-        *,
-        hospital_name: str | None,
-        region_keyword: str | None,
-        department_name: str | None,
-    ) -> tuple[str | None, str | None, str | None]:
+    # 병원명에 지역이나 진료과명이 섞여 들어온 경우 검색어를 병원명/지역/진료과로 분리한다.
+    def _parse_hospital_search_text(self, *, hospital_name: str | None, region_keyword: str | None, department_name: str | None) -> tuple[str | None, str | None, str | None]:
         if not hospital_name or region_keyword or department_name:
             return hospital_name, region_keyword, department_name
 
@@ -609,18 +566,14 @@ class PublicMedicalDataClient:
 
         return parsed_hospital_name, parsed_region_keyword, matched_department_name
 
+    # 병원 유형명을 공공데이터 API의 병원 유형 코드로 변환한다.
     def _resolve_hospital_type_code(self, hospital_type_name: str | None) -> str | None:
         if not hospital_type_name:
             return None
         return HOSPITAL_TYPE_CODE_MAP.get(hospital_type_name.strip())
 
-    def _resolve_region_codes(
-        self,
-        *,
-        region_keyword: str | None,
-        sido_code: str | None,
-        sggu_code: str | None,
-    ) -> tuple[str | None, str | None, str | None]:
+    # 지역 키워드에서 시도/시군구 명칭을 찾아 코드로 바꾸고 남은 상세 키워드를 반환한다.
+    def _resolve_region_codes(self, *, region_keyword: str | None, sido_code: str | None, sggu_code: str | None) -> tuple[str | None, str | None, str | None]:
         if not region_keyword:
             return sido_code, sggu_code, region_keyword
 
@@ -643,6 +596,7 @@ class PublicMedicalDataClient:
         normalized_keyword = remaining_keyword if remaining_keyword else None
         return resolved_sido_code, resolved_sggu_code, normalized_keyword
 
+    # 남은 지역 키워드에서 동/읍/면/리 단위의 읍면동 이름을 추출한다.
     def _extract_emdong_name(self, region_keyword: str | None) -> str | None:
         if not region_keyword:
             return None
@@ -654,12 +608,8 @@ class PublicMedicalDataClient:
                 return normalized
         return None
 
-    def _filter_hospital_items(
-        self,
-        items: list[dict[str, Any]],
-        *,
-        region_keyword: str | None,
-    ) -> list[dict[str, Any]]:
+    # API 결과 중 주소나 기관명에 지역 키워드가 포함된 항목만 남긴다.
+    def _filter_hospital_items(self, items: list[dict[str, Any]], *, region_keyword: str | None) -> list[dict[str, Any]]:
         if not region_keyword:
             return items
 
@@ -675,12 +625,8 @@ class PublicMedicalDataClient:
                 filtered.append(item)
         return filtered
 
-    def _prefer_department_name_matches(
-        self,
-        items: list[dict[str, Any]],
-        *,
-        department_name: str | None,
-    ) -> list[dict[str, Any]]:
+    # 진료과명이 병원명에 직접 들어간 결과를 우선시해 더 관련도 높은 병원을 앞세운다.
+    def _prefer_department_name_matches(self, items: list[dict[str, Any]], *, department_name: str | None) -> list[dict[str, Any]]:
         if not department_name:
             return items
 
@@ -692,11 +638,8 @@ class PublicMedicalDataClient:
 
         return exact_matches or items
 
-    def _find_region_name_by_code(
-        self,
-        mapping: dict[str, str],
-        code: str | None,
-    ) -> str | None:
+    # 코드값에 대응하는 지역명을 매핑 테이블에서 역으로 찾아 반환한다.
+    def _find_region_name_by_code(self, mapping: dict[str, str], code: str | None) -> str | None:
         if code is None:
             return None
         for name, candidate_code in mapping.items():

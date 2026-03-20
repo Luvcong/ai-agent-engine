@@ -13,6 +13,7 @@ logging.basicConfig(
 custom_logger = logging.getLogger("edu_agent")
 
 
+# 함수 종류에 맞는 래퍼를 씌워 실행 시작/종료/오류 로그를 공통 처리한다.
 def log_execution(func):
     """
     Executes logging for all types:

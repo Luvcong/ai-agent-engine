@@ -131,18 +131,22 @@ class ToolSelectionAccuracy(BaseMetric):
                 metadata={"expected_tools": expected, "actual_tools": actual},
             )
 
-        first_tool = actual[0]
-        value = 1.0 if first_tool in expected else 0.0
+        matched_tools = [tool for tool in actual if tool in expected]
+        value = 1.0 if matched_tools else 0.0
         reason = (
-            f"Correct first tool selection: {first_tool}"
+            f"Expected tool found in call chain: {matched_tools[0]}"
             if value == 1.0
-            else f"Wrong first tool. Expected one of {expected}, got {first_tool}."
+            else f"Expected one of {expected} in tool call chain, but got {actual}."
         )
         return score_result.ScoreResult(
             name=self.name,
             value=value,
             reason=reason,
-            metadata={"expected_tools": expected, "actual_tools": actual},
+            metadata={
+                "expected_tools": expected,
+                "actual_tools": actual,
+                "matched_tools": matched_tools,
+            },
         )
 
 

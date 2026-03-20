@@ -225,6 +225,16 @@ def _build_evaluation_task(args: argparse.Namespace):
                         "actual_tool_calls": [],
                         "execution_error": f"graph_recursion_error(limit={retry_limit}): {exc}",
                     }
+            except Exception as exc:
+                return {
+                    "input": user_input,
+                    "output": "",
+                    "expected_tools": expected_tools,
+                    "clarification_needed": clarification_needed,
+                    "response_goal": response_goal,
+                    "actual_tool_calls": [],
+                    "execution_error": f"{type(exc).__name__}: {exc}",
+                }
         finally:
             if tracer is not None:
                 tracer.flush()

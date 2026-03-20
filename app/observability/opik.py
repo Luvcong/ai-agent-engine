@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.utils.logger import custom_logger
 
 
+# 환경 변수와 설정 객체를 순서대로 확인해 Opik 설정값을 읽어온다.
 def _read_opik_value(env_name: str, settings_attr: str) -> str | None:
     value = os.getenv(env_name)
     if value:
@@ -24,6 +25,7 @@ def _read_opik_value(env_name: str, settings_attr: str) -> str | None:
 
 
 @lru_cache(maxsize=1)
+# Opik 추적 설정을 한 번만 초기화하고 활성화 여부를 반환한다.
 def configure_opik() -> bool:
     opik_settings = settings.OPIK
     if opik_settings is not None and not opik_settings.ENABLED:
@@ -53,6 +55,7 @@ def configure_opik() -> bool:
     return True
 
 
+# 주어진 thread_id에 연결된 LangChain용 Opik tracer를 생성한다.
 def create_opik_tracer(thread_id: str) -> OpikTracer | None:
     if not configure_opik():
         return None

@@ -9,12 +9,8 @@ from app.clients.public_data import PublicMedicalDataClient
 from app.core.config import settings
 
 
-def _tool_error_response(
-    *,
-    tool_name: str,
-    query: dict[str, Any],
-    error: str,
-) -> dict[str, Any]:
+# 도구 실행 실패 시 공통 형태의 에러 응답 payload를 만든다.
+def _tool_error_response(*, tool_name: str, query: dict[str, Any], error: str) -> dict[str, Any]:
     return {
         "tool_name": tool_name,
         "query": query,
@@ -25,8 +21,30 @@ def _tool_error_response(
 
 
 # TODO: 추후 규칙 기반 정렬 또는 리랭킹 로직 적용 필요 - 현재 단순 슬라이싱
+# 조회 결과 개수를 limit에 맞게 잘라 반환한다.
 def _truncate_items(items: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
     return items[:limit]
+
+
+def _has_location_context(
+    *,
+    region_keyword: str | None = None,
+    sido_code: str | None = None,
+    sggu_code: str | None = None,
+    emdong_name: str | None = None,
+    x_pos: str | float | None = None,
+    y_pos: str | float | None = None,
+) -> bool:
+    return any(
+        [
+            region_keyword,
+            sido_code,
+            sggu_code,
+            emdong_name,
+            x_pos is not None,
+            y_pos is not None,
+        ]
+    )
 
 
 @tool
@@ -86,14 +104,27 @@ async def search_disease_knowledge(
 ) -> dict[str, Any]:
     """Elasticsearch의 edu-collection에서 질병 설명, 치료 원칙, 관리법, 가이드라인을 조회합니다."""
     client = ElasticDiseaseSearchClient()
-    result = await client.search_disease_knowledge(
-        query=query,
-        domain=domain,
-        source=source,
-        source_spec=source_spec,
-        creation_year=creation_year,
-        limit=limit,
-    )
+    try:
+        result = await client.search_disease_knowledge(
+            query=query,
+            domain=domain,
+            source=source,
+            source_spec=source_spec,
+            creation_year=creation_year,
+            limit=limit,
+        )
+    except ValueError as exc:
+        return _tool_error_response(
+            tool_name="search_disease_knowledge",
+            query={
+                "query": query,
+                "domain": domain,
+                "source": source,
+                "source_spec": source_spec,
+                "creation_year": creation_year,
+            },
+            error=str(exc),
+        )
     result["items"] = _truncate_items(result["items"], limit)
     return result
 
@@ -130,6 +161,28 @@ async def search_hospital_info(
         "y_pos": y_pos,
         "radius": radius,
     }
+    has_location_context = _has_location_context(
+        region_keyword=region_keyword,
+        sido_code=sido_code,
+        sggu_code=sggu_code,
+        emdong_name=emdong_name,
+        x_pos=x_pos,
+        y_pos=y_pos,
+    )
+    if not has_location_context and any(
+        [
+            department_name,
+            department_code,
+            hospital_type_name,
+            hospital_type_code,
+            radius is not None,
+        ]
+    ):
+        return _tool_error_response(
+            tool_name="search_hospital_info",
+            query=query,
+            error="병원 검색에서 진료과, 병원 종류, 반경 조건을 사용할 때는 지역 정보 또는 좌표가 필요합니다.",
+        )
     try:
         result = await client.search_hospitals(
             hospital_name=hospital_name,

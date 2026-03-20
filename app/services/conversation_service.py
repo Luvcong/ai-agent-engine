@@ -6,11 +6,13 @@ from app.models import LangChainMessage, ConversationSummary, ConversationRespon
 class ConversationService:
     """대화 세션 관리 서비스 (메모리 기반, 향후 DB로 확장 가능)"""
     
+    # 대화 요약 정보와 메시지 목록을 메모리 저장소로 초기화한다.
     def __init__(self):
         # 메모리 기반 저장소 (향후 DB로 교체 가능)
         self._conversations: Dict[str, Dict[str, Any]] = {}
         self._messages: Dict[str, List[LangChainMessage]] = {}
     
+    # 새 대화 세션을 만들고 첫 메시지까지 함께 저장한다.
     def create_conversation(
         self,
         conversation_id: str,
@@ -34,6 +36,7 @@ class ConversationService:
         
         return conversation_id
     
+    # 기존 대화에 새 메시지를 추가하고 대화 요약 정보를 갱신한다.
     def add_message(
         self,
         conversation_id: str,
@@ -61,6 +64,7 @@ class ConversationService:
                 message.content if isinstance(message.content, str) else str(message.content)
             )
     
+    # 메모리에 저장된 대화 목록을 최신순으로 페이지네이션해 반환한다.
     def get_conversations(
         self,
         limit: int = 20,
@@ -84,6 +88,7 @@ class ConversationService:
         
         return summaries, total_count
     
+    # 대화 ID로 메시지 내역을 조회하고 필요 시 메타데이터 payload를 숨긴다.
     def get_conversation(
         self,
         conversation_id: str,
@@ -122,4 +127,3 @@ class ConversationService:
 
 # 전역 인스턴스
 conversation_service = ConversationService()
-

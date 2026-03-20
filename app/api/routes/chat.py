@@ -10,6 +10,7 @@ chat_router = APIRouter()
 
 
 @chat_router.post("/chat")
+# 사용자 메시지를 에이전트에 전달하고 SSE 스트림으로 응답을 반환한다.
 async def post_chat(request: ChatRequest):
     """
     자연어 쿼리를 에이전트가 처리합니다.
@@ -26,6 +27,7 @@ async def post_chat(request: ChatRequest):
     try:
         thread_id = getattr(request, "thread_id", uuid.uuid4())
         
+        # 에이전트의 단계별 결과를 SSE 이벤트 형식으로 변환해 스트리밍한다.
         async def event_generator():
             try:
                 yield f'data: {{"step": "model", "tool_calls": ["Planning"]}}\n\n'

@@ -163,6 +163,30 @@ async def test_elastic_disease_tool_uses_search_client(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_elastic_disease_tool_returns_structured_error_on_client_failure(monkeypatch):
+    async def fake_search_disease_knowledge(self, **kwargs):
+        raise ValueError("Elasticsearch 검색 요청이 잘못되었습니다.")
+
+    monkeypatch.setattr(
+        ElasticDiseaseSearchClient,
+        "search_disease_knowledge",
+        fake_search_disease_knowledge,
+    )
+
+    result = await search_disease_knowledge.ainvoke(
+        {
+            "query": "2형 당뇨병 치료 원칙",
+            "limit": 3,
+        }
+    )
+
+    assert result["tool_name"] == "search_disease_knowledge"
+    assert result["count"] == 0
+    assert result["items"] == []
+    assert "잘못되었습니다" in result["error"]
+
+
+@pytest.mark.asyncio
 async def test_disease_client_uses_search_text_params(monkeypatch):
     captured = {}
 
@@ -312,6 +336,36 @@ async def test_elastic_client_builds_search_payload(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_elastic_client_returns_friendly_message_for_bad_request(monkeypatch):
+    monkeypatch.setattr(settings, "ELASTICSEARCH_URL", "https://example.com")
+    monkeypatch.setattr(settings, "ELASTICSEARCH_INDEX", "edu-collection")
+    monkeypatch.setattr(settings, "ELASTICSEARCH_USERNAME", "elastic")
+    monkeypatch.setattr(settings, "ELASTICSEARCH_PASSWORD", "secret")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            400,
+            text='{"error":{"type":"search_phase_execution_exception"}}',
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_async_client = httpx.AsyncClient
+
+    def fake_async_client(*args, **kwargs):
+        kwargs["transport"] = transport
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", fake_async_client)
+
+    client = ElasticDiseaseSearchClient()
+
+    with pytest.raises(ValueError) as exc_info:
+        await client.search_disease_knowledge(query="2형 당뇨병 치료", limit=2)
+
+    assert "Elasticsearch 검색 요청이 잘못되었습니다." in str(exc_info.value)
+
+
+@pytest.mark.asyncio
 async def test_hospital_tool_uses_public_client(monkeypatch):
     async def fake_search_hospitals(self, **kwargs):
         return {
@@ -340,6 +394,61 @@ async def test_hospital_tool_uses_public_client(monkeypatch):
     assert result["items"][0]["hospital_name"] == "서울아산병원"
     assert result["query"]["department_name"] == "정형외과"
     assert result["query"]["hospital_type_name"] == "종합병원"
+
+
+@pytest.mark.asyncio
+async def test_hospital_tool_requires_location_for_department_or_type(monkeypatch):
+    called = False
+
+    async def fake_search_hospitals(self, **kwargs):
+        nonlocal called
+        called = True
+        return {"query": kwargs, "count": 0, "items": []}
+
+    monkeypatch.setattr(
+        PublicMedicalDataClient,
+        "search_hospitals",
+        fake_search_hospitals,
+    )
+
+    result = await search_hospital_info.ainvoke(
+        {
+            "department_name": "안과",
+            "limit": 5,
+        }
+    )
+
+    assert called is False
+    assert result["tool_name"] == "search_hospital_info"
+    assert result["count"] == 0
+    assert result["items"] == []
+    assert "지역 정보 또는 좌표가 필요" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_hospital_tool_allows_hospital_name_without_location(monkeypatch):
+    async def fake_search_hospitals(self, **kwargs):
+        return {
+            "query": kwargs,
+            "count": 1,
+            "items": [{"hospital_name": "서울아산병원"}],
+        }
+
+    monkeypatch.setattr(
+        PublicMedicalDataClient,
+        "search_hospitals",
+        fake_search_hospitals,
+    )
+
+    result = await search_hospital_info.ainvoke(
+        {
+            "hospital_name": "서울아산병원",
+            "limit": 2,
+        }
+    )
+
+    assert result["count"] == 1
+    assert result["items"][0]["hospital_name"] == "서울아산병원"
 
 
 @pytest.mark.asyncio

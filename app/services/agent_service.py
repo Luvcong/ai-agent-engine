@@ -12,14 +12,17 @@ from langchain_core.messages import HumanMessage
 
 
 class AgentService:
+    # 스트리밍 중간 진행 상태를 전달하기 위한 큐를 준비한다.
     def __init__(self):
         self.progress_queue: asyncio.Queue = asyncio.Queue()
 
+    # 현재 초기화된 의료 에이전트 인스턴스를 가져온다.
     def _get_agent(self):
         """공유 LangChain 에이전트를 반환합니다."""
         from app.agents.medical import get_medical_agent
         return get_medical_agent()
 
+    # 최종 응답 본문에 섞여 들어온 metadata 텍스트를 제거해 사용자 응답만 남긴다.
     def _sanitize_final_content(self, content: str | None) -> str:
         if not content:
             return ""
@@ -193,6 +196,7 @@ class AgentService:
                     opik_tracer.flush()
 
     @log_execution
+    # 응답 metadata를 dict 형태로 안전하게 복사해 반환한다.
     def _handle_metadata(self, metadata) -> dict:
         custom_logger.info("========================================")
         custom_logger.info(metadata)
